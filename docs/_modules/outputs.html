@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>outputs &mdash; Physics 360 PiBOT 0.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Physics 360 PiBOT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">lib</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Physics 360 PiBOT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">outputs</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for outputs</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">constants</span> <span class="k">as</span> <span class="nn">cnst</span>
+<span class="kn">import</span> <span class="nn">neopixel</span>
+<span class="kn">from</span> <span class="nn">utime</span> <span class="kn">import</span> <span class="n">sleep_ms</span>
+<span class="kn">from</span> <span class="nn">machine</span> <span class="kn">import</span> <span class="n">Pin</span><span class="p">,</span> <span class="n">PWM</span>
+
+
+<div class="viewcode-block" id="Buzzer"><a class="viewcode-back" href="../outputs.html#outputs.Buzzer">[docs]</a><span class="k">class</span> <span class="nc">Buzzer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generates sound from built-in buzzer on MAKER-PI-RP2040 board.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates buzzer control attributes.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pwm</span> <span class="o">=</span> <span class="n">PWM</span><span class="p">(</span><span class="n">Pin</span><span class="p">(</span><span class="n">cnst</span><span class="o">.</span><span class="n">BUZZER_PIN</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">OUT</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pulse_set</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">sleep_ms</span><span class="p">(</span><span class="mi">25</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="Buzzer.on"><a class="viewcode-back" href="../outputs.html#outputs.Buzzer.on">[docs]</a>    <span class="k">def</span> <span class="nf">on</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Turns on the buzzer at desired frequency and volume.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        freq : int, default=1000</span>
+<span class="sd">            Frequency of the tone generated. Minimum is 8 Hz.</span>
+<span class="sd">        level : int, default=2</span>
+<span class="sd">            Volume of the buzzer with levels 1-5, 5 being the loudest.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The audible volume of the buzzer is highly dependent on the</span>
+<span class="sd">        frequency and the pulse width. Sometimes increasing the level</span>
+<span class="sd">        (i.e., pulse width) does not generate a louder sound but can</span>
+<span class="sd">        affect the timbre.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Turn the buzzer on for three seconds and then turn it off.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.buzzer.on(freq=440, level=1)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(3)</span>
+<span class="sd">        &gt;&gt;&gt; robot.buzzer.off()</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_arguments</span><span class="p">(</span><span class="n">freq</span><span class="o">=</span><span class="n">freq</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: invalid argument to buzzer.on() method&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="c1"># set user defined frequency in PWM instance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pwm</span><span class="o">.</span><span class="n">freq</span><span class="p">(</span><span class="n">freq</span><span class="p">)</span>
+        <span class="c1"># calculate a 16-bit PWM duty cycle from user defined level</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_level</span> <span class="o">=</span> <span class="n">cnst</span><span class="o">.</span><span class="n">MIN_LEVEL</span> <span class="o">&lt;&lt;</span> <span class="n">level</span>
+        <span class="c1"># turn on buzzer by setting PWM duty cycle with 16-bit level value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pwm</span><span class="o">.</span><span class="n">duty_u16</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_level</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Buzzer.off"><a class="viewcode-back" href="../outputs.html#outputs.Buzzer.off">[docs]</a>    <span class="k">def</span> <span class="nf">off</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Turns off the buzzer.&quot;&quot;&quot;</span>
+
+        <span class="c1"># set PWM duty cycle to zero to silence the buzzer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pwm</span><span class="o">.</span><span class="n">duty_u16</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Buzzer.pulse"><a class="viewcode-back" href="../outputs.html#outputs.Buzzer.pulse">[docs]</a>    <span class="k">def</span> <span class="nf">pulse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">on_time</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">bursts</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generates single, multiple, or continuous buzzer pulses.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        on_time : int, default=100</span>
+<span class="sd">            Time in ms to turn on the buzzer. Value must be an integer</span>
+<span class="sd">            multiple of 10 ms to match the control loop step time and no</span>
+<span class="sd">            larger than 5000 ms.</span>
+<span class="sd">        bursts : int, default=1</span>
+<span class="sd">            Number of pulses to sound. Duty cycle is 50% (i.e., off time</span>
+<span class="sd">            is equal to on time. Use -1 to generate continuous pulses.</span>
+<span class="sd">        freq : int, default=1000</span>
+<span class="sd">            Frequency of the tone generated. Minimum is 8 Hz.</span>
+<span class="sd">        level : int, default=2</span>
+<span class="sd">            Volume of the buzzer with levels 1-5, 5 being the loudest.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This pulse function works in conjunction with the Control class</span>
+<span class="sd">        to turn the buzzer on and off in the robot control loop that</span>
+<span class="sd">        runs on the second core of the RP2040.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Create continuous pulses and reset after five seconds to cancel.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.buzzer.pulse(on_time=250, bursts=-1, freq=440, level=1)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(5)</span>
+<span class="sd">        &gt;&gt;&gt; robot.buzzer.reset()</span>
+
+<span class="sd">        A discrete number of bursts does not require a reset to cancel.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.buzzer.pulse(bursts=3)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_arguments</span><span class="p">(</span><span class="n">on_time</span><span class="o">=</span><span class="n">on_time</span><span class="p">,</span> <span class="n">bursts</span><span class="o">=</span><span class="n">bursts</span><span class="p">,</span>
+                                          <span class="n">freq</span><span class="o">=</span><span class="n">freq</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: invalid argument to buzzer.pulse() method&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="c1"># set user defined frequency in PWM instance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pwm</span><span class="o">.</span><span class="n">freq</span><span class="p">(</span><span class="n">freq</span><span class="p">)</span>
+        <span class="c1"># calculate a 16-bit PWM duty cycle from user defined level</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_level</span> <span class="o">=</span> <span class="n">cnst</span><span class="o">.</span><span class="n">MIN_LEVEL</span> <span class="o">&lt;&lt;</span> <span class="n">level</span>
+        <span class="c1"># calculate the number of control loop steps to run the buzzer pulse</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_on_steps</span> <span class="o">=</span> <span class="n">on_time</span> <span class="o">/</span> <span class="mi">10</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bursts</span> <span class="o">=</span> <span class="n">bursts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pulse_set</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="Buzzer.reset"><a class="viewcode-back" href="../outputs.html#outputs.Buzzer.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clears buzzer pulses and reinitializes attributes.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pwm</span><span class="o">.</span><span class="n">duty_u16</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># set _bursts to 0 to reset _pulse_set in the control loop</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bursts</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_valid_arguments</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">on_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bursts</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Checks for valid arguments from user calls.</span>
+
+<span class="sd">        Accepts all the parameters to .on() and .pulse() to check if</span>
+<span class="sd">        they are valid.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">freq</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span> <span class="ow">or</span> <span class="n">freq</span> <span class="o">&lt;</span> <span class="mi">8</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;freq must be an integer 8 Hz or greater&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">level</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span> <span class="ow">or</span> <span class="n">level</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">level</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;level must be an integer from 1 to 5&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">on_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">on_time</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span>
+                                      <span class="ow">or</span> <span class="n">on_time</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">on_time</span> <span class="o">&lt;</span> <span class="mi">10</span>
+                                      <span class="ow">or</span> <span class="n">on_time</span> <span class="o">&gt;</span> <span class="mi">5000</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;on_time must be an integer multiple of 10 ms&#39;</span>
+                             <span class="o">+</span> <span class="s1">&#39; and not more than 5000 ms&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">bursts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+              <span class="ow">and</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">bursts</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span> <span class="ow">or</span> <span class="n">bursts</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">bursts</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;bursts must be an integer &gt;= 1 or = -1 for continuous&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># if no invalid arguments are found, return True</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="c1"># if an invalid argument is found, return False</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="LEDs"><a class="viewcode-back" href="../outputs.html#outputs.LEDs">[docs]</a><span class="k">class</span> <span class="nc">LEDs</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Controls the RGB neopixel LEDs on the MAKER-PI-RP2040 board.</span>
+
+<span class="sd">    Color constants are provided to allow for easier setting of common</span>
+<span class="sd">    colors. The constants are 3-tuples of RGB values from 0 to 255.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># LED color table</span>
+    <span class="n">AMBER</span> <span class="o">=</span> <span class="p">(</span><span class="mi">120</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">AQUA</span> <span class="o">=</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">70</span><span class="p">,</span> <span class="mi">70</span><span class="p">)</span>
+    <span class="n">RED</span> <span class="o">=</span> <span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">GOLD</span> <span class="o">=</span> <span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">55</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+    <span class="n">JADE</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">120</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+    <span class="n">YELLOW</span> <span class="o">=</span> <span class="p">(</span><span class="mi">110</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">GREEN</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">CYAN</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
+    <span class="n">BLUE</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">128</span><span class="p">)</span>
+    <span class="n">PURPLE</span> <span class="o">=</span> <span class="p">(</span><span class="mi">80</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
+    <span class="n">MAGENTA</span> <span class="o">=</span> <span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+    <span class="n">WHITE</span> <span class="o">=</span> <span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
+    <span class="n">ORANGE</span> <span class="o">=</span> <span class="p">(</span><span class="mi">120</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">PINK</span> <span class="o">=</span> <span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+    <span class="n">TEAL</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">108</span><span class="p">,</span> <span class="mi">54</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates neopixel LED control attributes.&quot;&quot;&quot;</span>
+
+        <span class="c1"># create instance of NeoPixel class at the appropriate pin</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_np</span> <span class="o">=</span> <span class="n">neopixel</span><span class="o">.</span><span class="n">NeoPixel</span><span class="p">(</span><span class="n">Pin</span><span class="p">(</span><span class="n">cnst</span><span class="o">.</span><span class="n">NEOPIXEL</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="c1"># create state variables to indicate LED and pulse status</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lit_left</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lit_right</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pulse_set</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pulse_left_set</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pulse_right_set</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">sleep_ms</span><span class="p">(</span><span class="mi">25</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_left</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_right</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bursts</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bursts_left</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bursts_right</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">off</span><span class="p">()</span>
+
+<div class="viewcode-block" id="LEDs.on"><a class="viewcode-back" href="../outputs.html#outputs.LEDs.on">[docs]</a>    <span class="k">def</span> <span class="nf">on</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Turns on left, right, or both LEDs to specified color.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        color : 3-tuple</span>
+<span class="sd">            Color (and brightness) set with RGB values from 0 to 255.</span>
+<span class="sd">        side : {&#39;left&#39;, &#39;right&#39;}, default=None</span>
+<span class="sd">            The side to illuminate. Default is None for both sides.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Pass one of the colors in the table or use a custom 3-tuple to</span>
+<span class="sd">        select your own color and brightness.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from robot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Turn on both LEDs with the color red for three seconds.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.leds.on(robot.leds.RED)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(3)</span>
+<span class="sd">        &gt;&gt;&gt; robot.leds.off()</span>
+
+<span class="sd">        Use the optional side parameter to turn on only one LED.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.leds.on(robot.leds.AMBER, side=&#39;left&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; robot.leds.on(robot.leds.TEAL, side=&#39;right&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(3)</span>
+<span class="sd">        &gt;&gt;&gt; robot.leds.off(&#39;left&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(3)</span>
+<span class="sd">        &gt;&gt;&gt; robot.leds.off(&#39;right&#39;)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_arguments</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="n">side</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: invalid argument to leds.on() method&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="c1"># default is to set both sides</span>
+        <span class="k">if</span> <span class="n">side</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_np</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="n">color</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lit_left</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lit_right</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_color</span> <span class="o">=</span> <span class="n">color</span>
+        <span class="c1"># set only the right LED</span>
+        <span class="k">elif</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;right&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_np</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">color</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lit_right</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_color_right</span> <span class="o">=</span> <span class="n">color</span>
+        <span class="c1"># set only the left LED</span>
+        <span class="k">elif</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_np</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">color</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lit_left</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_color_left</span> <span class="o">=</span> <span class="n">color</span>
+        <span class="c1"># write to the neopixels only once before returning</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_np</span><span class="o">.</span><span class="n">write</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="LEDs.off"><a class="viewcode-back" href="../outputs.html#outputs.LEDs.off">[docs]</a>    <span class="k">def</span> <span class="nf">off</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Turns off left, right, or both LEDs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        side : {&#39;left&#39;, &#39;right&#39;}, default=None</span>
+<span class="sd">            The side to turn off. Default is None for both sides.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_arguments</span><span class="p">(</span><span class="n">side</span><span class="o">=</span><span class="n">side</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: invalid argument to leds.off() method&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="c1"># default is to turn off both sides</span>
+        <span class="k">if</span> <span class="n">side</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_np</span><span class="o">.</span><span class="n">fill</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lit_left</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lit_right</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># turn off only the right LED</span>
+        <span class="k">elif</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;right&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_np</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lit_right</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># turn off only the left LED</span>
+        <span class="k">elif</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_np</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lit_left</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># write to the neopixels only once before returning</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_np</span><span class="o">.</span><span class="n">write</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="LEDs.pulse"><a class="viewcode-back" href="../outputs.html#outputs.LEDs.pulse">[docs]</a>    <span class="k">def</span> <span class="nf">pulse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="n">on_time</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">bursts</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fade</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generates single, multiple, or continuous pulses on LEDs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        color : 3-tuple</span>
+<span class="sd">            Color (and brightness) set with RGB values from 0 to 255.</span>
+<span class="sd">        on_time : int, default=100</span>
+<span class="sd">            Time in ms to turn on the buzzer. Value must be an integer</span>
+<span class="sd">            multiple of 10 ms to match the control loop step time and no</span>
+<span class="sd">            larger than 5000 ms.</span>
+<span class="sd">        bursts : int, default=1</span>
+<span class="sd">            Number of pulses on LED. Duty cycle is 50% (i.e., off time</span>
+<span class="sd">            is equal to on time. Use -1 to generate continuous pulses.</span>
+<span class="sd">        side : {&#39;left&#39;, &#39;right&#39;}, default=None</span>
+<span class="sd">            The side to pulse. Default is None for both sides.</span>
+<span class="sd">        fade : {True}, default=None</span>
+<span class="sd">            Ramps the LED brightness up and down to create fade effect.</span>
+<span class="sd">            Default is None for instantaneous illumination.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Pass one of the colors in the table or use a custom 3-tuple to</span>
+<span class="sd">        select your own color and brightness.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from robot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Create continuous pulses and reset after five seconds to cancel.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.leds.pulse(robot.leds.RED, on_time=250, bursts=-1)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(5)</span>
+<span class="sd">        &gt;&gt;&gt; robot.leds.reset()</span>
+
+<span class="sd">        Creates three fading pulses with no need to reset.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.leds.pulse(robot.leds.AMBER, on_time=500, side=&#39;left&#39;, bursts=3, fade=True)</span>
+<span class="sd">        &gt;&gt;&gt; robot.leds.pulse(robot.leds.TEAL, on_time=500, side=&#39;right&#39;, bursts=3, fade=True)</span>
+
+<span class="sd">        Pulses can also be called with the LEDs on to create dual color.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.leds.on(robot.leds.BLUE)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(3)</span>
+<span class="sd">        &gt;&gt;&gt; robot.leds.pulse(robot.leds.RED, on_time=500, bursts=-1)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(5)</span>
+<span class="sd">        &gt;&gt;&gt; robot.leds.reset()</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_arguments</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">on_time</span><span class="o">=</span><span class="n">on_time</span><span class="p">,</span>
+                                          <span class="n">bursts</span><span class="o">=</span><span class="n">bursts</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="n">side</span><span class="p">,</span> <span class="n">fade</span><span class="o">=</span><span class="n">fade</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: invalid argument to leds.pulse() method&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="c1"># default is to pulse both sides</span>
+        <span class="k">if</span> <span class="n">side</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pulse_set</span> <span class="o">=</span> <span class="p">(</span><span class="n">color</span><span class="p">,</span> <span class="n">on_time</span><span class="o">/</span><span class="mi">10</span><span class="p">,</span> <span class="n">fade</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bursts</span> <span class="o">=</span> <span class="n">bursts</span>
+        <span class="c1"># pulse only the right LED</span>
+        <span class="k">elif</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;right&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pulse_right_set</span> <span class="o">=</span> <span class="p">(</span><span class="n">color</span><span class="p">,</span> <span class="n">on_time</span><span class="o">/</span><span class="mi">10</span><span class="p">,</span> <span class="n">fade</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bursts_right</span> <span class="o">=</span> <span class="n">bursts</span>
+        <span class="c1"># pulse only the left LED</span>
+        <span class="k">elif</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pulse_left_set</span> <span class="o">=</span> <span class="p">(</span><span class="n">color</span><span class="p">,</span> <span class="n">on_time</span><span class="o">/</span><span class="mi">10</span><span class="p">,</span> <span class="n">fade</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bursts_left</span> <span class="o">=</span> <span class="n">bursts</span></div>
+
+<div class="viewcode-block" id="LEDs.reset"><a class="viewcode-back" href="../outputs.html#outputs.LEDs.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clears LED pulses and reinitializes attributes.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_valid_arguments</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">on_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bursts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                         <span class="n">fade</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Checks for valid arguments from user calls.</span>
+
+<span class="sd">        Accepts all the parameters to leds.on(), leds.off, and</span>
+<span class="sd">        leds.pulse() to check if they are valid.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+         
+        <span class="k">if</span> <span class="n">color</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">color</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">tuple</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">color</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span>
+                <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">256</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">color</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;color must be a 3-tuple with RGB integers from 0 - 255&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">side</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">side</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="s1">&#39;right&#39;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;side must be &#39;left&#39; or &#39;right&#39;&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">on_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">on_time</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span>
+                                      <span class="ow">or</span> <span class="n">on_time</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">on_time</span> <span class="o">&lt;</span> <span class="mi">10</span>
+                                      <span class="ow">or</span> <span class="n">on_time</span> <span class="o">&gt;</span> <span class="mi">5000</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;on_time must be an integer multiple of 10 ms&#39;</span>
+                             <span class="o">+</span> <span class="s1">&#39; and not more than 5000 ms&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">bursts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+              <span class="ow">and</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">bursts</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span> <span class="ow">or</span> <span class="n">bursts</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">bursts</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;bursts must be an integer &gt;= 1 or = -1 for continuous&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">fade</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">fade</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;fade is optional and can only be set to True&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># if no invalid arguments are found, return True</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="c1"># if an invalid argument is found, return False</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Turner Howard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pibot &mdash; Physics 360 PiBOT 0.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Physics 360 PiBOT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">lib</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Physics 360 PiBOT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pibot</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pibot</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">This module contains the PiBOT class that incorporates the control,</span>
+<span class="sd">motion, sensors, and outputs modules to create a fully functioning</span>
+<span class="sd">robot. The PiBOT class contains attributes to track the robot position</span>
+<span class="sd">and heading, determine its current state, perform lidar scans of the</span>
+<span class="sd">surroundings, and work with the lidar data. The examples in the</span>
+<span class="sd">following section demonstrate how to use the PiBOT attributes. The</span>
+<span class="sd">motion, sensors, and outputs modules also contain many examples on how</span>
+<span class="sd">to use their features from within an instance of the PiBOT class.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">pi</span><span class="p">,</span> <span class="n">cos</span><span class="p">,</span> <span class="n">radians</span><span class="p">,</span> <span class="n">sqrt</span>
+<span class="kn">from</span> <span class="nn">utime</span> <span class="kn">import</span> <span class="n">sleep_ms</span>
+<span class="kn">from</span> <span class="nn">control</span> <span class="kn">import</span> <span class="n">Control</span>
+<span class="kn">from</span> <span class="nn">motion</span> <span class="kn">import</span> <span class="n">Motion</span>
+<span class="kn">from</span> <span class="nn">sensors</span> <span class="kn">import</span> <span class="n">Whiskers</span><span class="p">,</span> <span class="n">IrSensors</span><span class="p">,</span> <span class="n">LidarSensor</span><span class="p">,</span> <span class="n">IrRemote</span>
+<span class="kn">from</span> <span class="nn">outputs</span> <span class="kn">import</span> <span class="n">Buzzer</span><span class="p">,</span> <span class="n">LEDs</span>
+
+
+<div class="viewcode-block" id="PiBOT"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT">[docs]</a><span class="k">class</span> <span class="nc">PiBOT</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a top-level robot object to operate the PiBOT.</span>
+
+<span class="sd">    ...</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    whiskers : Whiskers object</span>
+<span class="sd">        Checks for left or right whisker contact.</span>
+<span class="sd">    ir : IrSensors object</span>
+<span class="sd">        Checks for left or right IR sensor detection.</span>
+<span class="sd">    lidar : LidarSensor object</span>
+<span class="sd">        Gets the current distance reading from the lidar sensor.</span>
+<span class="sd">    remote : IrRemote object</span>
+<span class="sd">        Gets commands from the IR remote control.</span>
+<span class="sd">    leds : LEDs object</span>
+<span class="sd">        Controls the left and right neopixel LEDs.</span>
+<span class="sd">    buzzer : Buzzer object</span>
+<span class="sd">        Controls the buzzer sound output.</span>
+<span class="sd">    move : Motion object</span>
+<span class="sd">        Controls the robot motion.</span>
+<span class="sd">    lidar_dist : list</span>
+<span class="sd">        The lidar distance values stored when scanning.</span>
+<span class="sd">    lidar_angle : list</span>
+<span class="sd">        The headings (angle values) when scanning with lidar.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates robot control attributes.&quot;&quot;&quot;</span>
+
+        <span class="c1"># OBJECTS NEEDED TO CREATE ROBOT</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">whiskers</span> <span class="o">=</span> <span class="n">Whiskers</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ir</span> <span class="o">=</span> <span class="n">IrSensors</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lidar</span> <span class="o">=</span> <span class="n">LidarSensor</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remote</span> <span class="o">=</span> <span class="n">IrRemote</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">leds</span> <span class="o">=</span> <span class="n">LEDs</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buzzer</span> <span class="o">=</span> <span class="n">Buzzer</span><span class="p">()</span>
+        <span class="c1"># pass objects into the Control class to allow access to attributes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_control</span> <span class="o">=</span> <span class="n">Control</span><span class="p">(</span><span class="n">leds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">leds</span><span class="p">,</span> <span class="n">buzzer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">buzzer</span><span class="p">,</span>
+                               <span class="n">remote</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">remote</span><span class="p">)</span>
+        <span class="c1"># pass instance of Control class into Motion class to access attributes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">move</span> <span class="o">=</span> <span class="n">Motion</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="p">)</span>
+        <span class="c1"># ATTRIBUTES FOR LIDAR SCAN</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lidar_dist</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">position</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets or set the current position as a list of [x, y]</span>
+<span class="sd">        coordinates.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The global coordinate system is based on the position of the</span>
+<span class="sd">        centerpoint between the robot&#39;s wheels when motion is first</span>
+<span class="sd">        started or after resetting. The x axis points forward along the</span>
+<span class="sd">        path, and the y axis points to the left wheel.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Get the position.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.position</span>
+<span class="sd">        [0, 0]</span>
+
+<span class="sd">        Set the position.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.position = [7.07, -7.07]</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># wait to avoid getting new value while _tracking() method is active</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_tracking_lock</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_position</span>
+
+    <span class="nd">@position</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c1"># check for valid argument</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: position must be a list in the form [x, y]&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: position must be a list of [x, y] values&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: x and y must be numeric values&#39;</span><span class="p">)</span>
+        <span class="c1"># wait to avoid setting new value while _tracking() method is active</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_tracking_lock</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_position</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">heading</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets or set the current heading angle.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The heading angle is measured in degrees from the x axis with</span>
+<span class="sd">        positive values going counterclockwise.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Get the heading.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.heading</span>
+<span class="sd">        89.54</span>
+
+<span class="sd">        Set the heading.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.heading = 180</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># wait to avoid setting new value while _tracking() method is active</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_tracking_lock</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_heading</span> <span class="o">*</span> <span class="p">(</span><span class="mi">180</span><span class="o">/</span><span class="n">pi</span><span class="p">)</span>
+
+    <span class="nd">@heading</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">heading</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c1"># check for valid argument</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: heading must be a numeric value in degrees&#39;</span><span class="p">)</span>
+        <span class="c1"># wait to avoid setting new value while _tracking() method is active</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_tracking_lock</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_heading</span> <span class="o">=</span> <span class="n">value</span> <span class="o">*</span> <span class="p">(</span><span class="n">pi</span><span class="o">/</span><span class="mi">180</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">current_time</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the current time in seconds as a read-only value.</span>
+
+<span class="sd">        This is the time since an instance of the PiBOT class was</span>
+<span class="sd">        created. The clock is reset when the .reset() method is called.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_t_current</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">motion_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the current motion state of the robot.</span>
+
+<span class="sd">        The motion states are: &#39;stop&#39;, &#39;pause&#39;, &#39;linear&#39;, &#39;turn&#39;, &#39;arc&#39;,</span>
+<span class="sd">        and &#39;steer&#39;.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_motion_state</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">busy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines if the robot is busy executing motion commands.</span>
+
+<span class="sd">        The robot is considered busy if protected motion is being</span>
+<span class="sd">        commanded or if commands are waiting in the queue.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_protect</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_motion_queue</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="PiBOT.reset"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stops motion, exits thread, and reinitializes attributes.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+        <span class="n">sleep_ms</span><span class="p">(</span><span class="mi">15</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_thread_running</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># wait for thread to exit before reinitializing and starting new thread </span>
+        <span class="n">sleep_ms</span><span class="p">(</span><span class="mi">25</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">leds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">leds</span><span class="p">,</span> <span class="n">buzzer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">buzzer</span><span class="p">,</span>
+                               <span class="n">remote</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">remote</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="PiBOT.scan"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.scan">[docs]</a>    <span class="k">def</span> <span class="nf">scan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">increment</span><span class="o">=</span><span class="mf">2.5</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sweeps the robot through an angle and stores lidar data.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : int, float, maximum +/- 720</span>
+<span class="sd">            A value in degrees to rotate the robot for a scan sweep.</span>
+<span class="sd">        increment : int, float, default=2.5</span>
+<span class="sd">            The interval in degrees at which to capture lidar data.</span>
+<span class="sd">        filename : str, optional</span>
+<span class="sd">            Name of the file for saving the lidar data to a CSV.</span>
+<span class="sd">            </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        2-tuple of lists</span>
+<span class="sd">            The corresponding angle and distance values, which can</span>
+<span class="sd">            also be accessed through the .lidar_angle and .lidar_dist</span>
+<span class="sd">            attributes.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The default angle increment of the lidar scan is set to 2.5</span>
+<span class="sd">        degrees, which represents a good compromise between the speed</span>
+<span class="sd">        and resolution during the turn motion. The actual angle stored</span>
+<span class="sd">        in .lidar_angle varies because the data is collected dynamically</span>
+<span class="sd">        while the robot turns. The lidar detects a field of view of</span>
+<span class="sd">        about 10 degrees, meaning the data spaced at 2.5 degrees</span>
+<span class="sd">        represents a higher resolution than the lidar can really discern</span>
+<span class="sd">        and results in overlapping ranges of detection. </span>
+<span class="sd">        </span>
+<span class="sd">        The optional filename is used to save a CSV file to the RP2040&#39;s</span>
+<span class="sd">        memory, which can be accessed with Thonny and downloaded to the</span>
+<span class="sd">        computer for analysis.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Command a 360 degree clockwise scan. The returned lists are</span>
+<span class="sd">        stored in local variables as shown; however, it is not</span>
+<span class="sd">        necessary to use the returned values because they can also</span>
+<span class="sd">        be accessed directly with the .lidar_dist and .lidar_angle</span>
+<span class="sd">        attributes.</span>
+
+<span class="sd">        &gt;&gt;&gt; angle, distance = robot.scan(-360)</span>
+
+<span class="sd">        Command a 180 degree counterclockwise scan and store the data</span>
+<span class="sd">        to a file called &#39;test_data&#39;. The data is not saved to local</span>
+<span class="sd">        variables. In the output, it is clear that the default angle</span>
+<span class="sd">        increment of 2.5 degrees cannot be followed exactly but tracks</span>
+<span class="sd">        fairly close to the desired step size.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.scan(180, filename=&#39;test_data&#39;)</span>
+<span class="sd">        ([0.0, 2.713043, 6.052173, 8.869564, 10.01739, 12.52174,...</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid argument</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="ow">or</span> <span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">720</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: maximum magnitude of angle is +/-720 degrees&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">increment</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="ow">or</span> <span class="n">increment</span> <span class="o">&gt;</span> <span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: increment in degrees must be less than angle&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: filename must be a string&#39;</span><span class="p">)</span>
+        <span class="c1"># create an angle increment counter</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">start_angle</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span>
+        <span class="c1"># clear lidar data before a new scan</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lidar_dist</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="c1"># start a protected turn move at the specified angle</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">turn</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># wait for the turn to start before collecting data</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_motion_state</span> <span class="o">!=</span> <span class="s1">&#39;turn&#39;</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="c1"># while the turn is active, collect data at the approximate increment</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_motion_state</span> <span class="o">==</span> <span class="s1">&#39;turn&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">((</span><span class="n">angle</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                 <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span> <span class="o">&gt;=</span> <span class="n">start_angle</span> <span class="o">+</span> <span class="n">increment</span><span class="o">*</span><span class="n">i</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="p">(</span><span class="n">angle</span> <span class="o">&lt;</span> <span class="mi">0</span>
+                        <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span> <span class="o">&lt;=</span> <span class="n">start_angle</span> <span class="o">-</span> <span class="n">increment</span><span class="o">*</span><span class="n">i</span><span class="p">)):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lidar_dist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lidar</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="p">)</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># create a CSV (comma-separated values) file and write a column header</span>
+        <span class="k">if</span> <span class="n">filename</span><span class="p">:</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s1">.csv&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;angle (degrees), distance (cm)</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span><span class="p">)):</span>
+                <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">lidar_dist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lidar_dist</span></div>
+
+<div class="viewcode-block" id="PiBOT.max_distance"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.max_distance">[docs]</a>    <span class="k">def</span> <span class="nf">max_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finds the maximum value in the lidar scan data.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : list</span>
+<span class="sd">            The lidar angle data</span>
+<span class="sd">        distance : list</span>
+<span class="sd">            The lidar distance data</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        2-tuple</span>
+<span class="sd">            A pair comprising the heading angle and maximum distance.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+<span class="sd">        Finds the maximum value and corresponsing angle in scan data. If</span>
+<span class="sd">        there is more than one identical maximum value, the first one in</span>
+<span class="sd">        the list will be returned. If there are values that are out of</span>
+<span class="sd">        range (i.e., 132 cm), the method finds the block of 132 cm</span>
+<span class="sd">        values in the distance list that is longest and returns the</span>
+<span class="sd">        angle near the center of the block. If there is only one 132 cm</span>
+<span class="sd">        value, that will be returned as the maximum. If there is more</span>
+<span class="sd">        than one non-adjacent single 132 cm value, the first one in the</span>
+<span class="sd">        list will be returned as the maximum.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Command a 360 degree clockwise scan and use the returned values</span>
+<span class="sd">        to find the maximum.</span>
+
+<span class="sd">        &gt;&gt;&gt; angle, distance = robot.scan(-360)</span>
+<span class="sd">        &gt;&gt;&gt; robot.max_distance(angle, distance)</span>
+<span class="sd">        (-188.4522, 132)</span>
+
+<span class="sd">        The arguments can also be the lidar data taken directly from the</span>
+<span class="sd">        PiBOT attributes instead of local copies used in the previous</span>
+<span class="sd">        example.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.scan(-360)</span>
+<span class="sd">        ([0.0, -2.504347, -5.321739, -7.61739, -10.53913, -12.93913,...</span>
+<span class="sd">        &gt;&gt;&gt; robot.max_distance(robot.lidar_angle, robot.lidar_dist)</span>
+<span class="sd">        (-80.34782, 91.0)</span>
+
+<span class="sd">        The scan can also return its values directly to the max_distance</span>
+<span class="sd">        method by using the unpacking operator (*) as shown.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.max_distance(*robot.scan(-360))</span>
+<span class="sd">        (-78.78259, 90.0)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">max_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># create index list of all out-of-range values in lidar data</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">distance</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="mi">132</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">index</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">distance</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="mi">132</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">index</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">distance</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="mi">132</span><span class="p">,</span> <span class="n">index</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="c1"># find center of largest patch of 132 cm values (i.e., out of range)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">index</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">index</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">index</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]:</span>
+                    <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="n">max_count</span><span class="p">:</span>
+                        <span class="n">max_count</span> <span class="o">=</span> <span class="n">count</span>
+                        <span class="n">center</span> <span class="o">=</span> <span class="n">index</span><span class="p">[(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">-</span><span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="o">/</span><span class="mi">2</span><span class="p">)]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">max_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">center</span> <span class="o">=</span> <span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">angle</span><span class="p">[</span><span class="n">center</span><span class="p">],</span> <span class="n">distance</span><span class="p">[</span><span class="n">center</span><span class="p">]</span>
+        <span class="c1"># if there are no values out of range, return the maximum of the list</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">max_index</span> <span class="o">=</span> <span class="n">distance</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">distance</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">angle</span><span class="p">[</span><span class="n">max_index</span><span class="p">],</span> <span class="n">distance</span><span class="p">[</span><span class="n">max_index</span><span class="p">]</span></div>
+        
+<div class="viewcode-block" id="PiBOT.min_distance"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.min_distance">[docs]</a>    <span class="k">def</span> <span class="nf">min_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finds the minimum value in the lidar scan data.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : list</span>
+<span class="sd">            The lidar angle data</span>
+<span class="sd">        distance : list</span>
+<span class="sd">            The lidar distance data</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        2-tuple</span>
+<span class="sd">            A pair comprising the heading angle and minimum distance.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Finds the minimum value and corresponsing angle in scan data. If</span>
+<span class="sd">        there is more than one identical minimum value, the first one in</span>
+<span class="sd">        the list will be returned.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Command a 360 degree clockwise scan and use the returned values</span>
+<span class="sd">        to find the minimum.</span>
+
+<span class="sd">        &gt;&gt;&gt; angle, distance = robot.scan(-360)</span>
+<span class="sd">        &gt;&gt;&gt; robot.min_distance(angle, distance)</span>
+<span class="sd">        (-272.974, 18.2)</span>
+
+<span class="sd">        The arguments can also be the lidar data taken directly from the</span>
+<span class="sd">        PiBOT attributes instead of local copies used in the previous</span>
+<span class="sd">        example.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.scan(-360)</span>
+<span class="sd">        ([0.0, -2.713043, -5.634782, -7.721738, -10.22609, -12.83478,...</span>
+<span class="sd">        &gt;&gt;&gt; robot.min_distance(robot.lidar_angle, robot.lidar_dist)</span>
+<span class="sd">        (-120.0, 13.8)</span>
+
+<span class="sd">        The scan can also return its values directly to the min_distance</span>
+<span class="sd">        method by using the unpacking operator (*) as shown.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.min_distance(*robot.scan(-360))</span>
+<span class="sd">        (-279.9652, 19.6)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># find index of minimum value in distance list</span>
+        <span class="n">min_index</span> <span class="o">=</span> <span class="n">distance</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">distance</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">angle</span><span class="p">[</span><span class="n">min_index</span><span class="p">],</span> <span class="n">distance</span><span class="p">[</span><span class="n">min_index</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="PiBOT.detect_objects"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.detect_objects">[docs]</a>    <span class="k">def</span> <span class="nf">detect_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Attempts to detect one or more objects in the foreground.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : list</span>
+<span class="sd">            The lidar angle data</span>
+<span class="sd">        distance : list</span>
+<span class="sd">            The lidar distance data</span>
+<span class="sd">        threshold : int, float, default=10</span>
+<span class="sd">            Minimum step size in cm between adjacent lidar distance</span>
+<span class="sd">            values to indicate an edge is present. </span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        3-tuple of lists</span>
+<span class="sd">            A triplet of lists comprising the approximate heading angles</span>
+<span class="sd">            in degrees to the center of the objects, the average</span>
+<span class="sd">            distances in cm to the objects, and their approximate widths</span>
+<span class="sd">            in cm.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Attempts to find objects in the foreground by calculating the</span>
+<span class="sd">        difference between adjacent lidar distance values to detemine</span>
+<span class="sd">        if there is a step larger than a threshold value. The step</span>
+<span class="sd">        represents an edge between a near and distant object. If both a</span>
+<span class="sd">        step from far to near and then a corresponding step from near to</span>
+<span class="sd">        far are detected, an object is recorded. The center angle,</span>
+<span class="sd">        average distance, and approximate width of the object are stored</span>
+<span class="sd">        in the corresponsing lists. After finding the first object,</span>
+<span class="sd">        detection continues until reaching the end of the data list. If</span>
+<span class="sd">        the object is too far away or too narrow, it may not be</span>
+<span class="sd">        detected. It&#39;s also possible that this method will return data</span>
+<span class="sd">        for an object that doesn&#39;t really exist. Adjusting the threshold</span>
+<span class="sd">        value could help fine tune the performance.</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Command a 360 degree clockwise scan and use the returned values</span>
+<span class="sd">        to detect objects. In this case the unpacking operator is used</span>
+<span class="sd">        to pass the angle and distance lists returned from the scan</span>
+<span class="sd">        directly into the .detect_objects() method. The returned object</span>
+<span class="sd">        lists are stored as local variables as shown. In this example</span>
+<span class="sd">        three objects are detected.</span>
+
+<span class="sd">        &gt;&gt;&gt; obj_angle, obj_dist, obj_width = robot.detect_objects(*robot.scan(-360))</span>
+<span class="sd">        &gt;&gt;&gt; obj_angle</span>
+<span class="sd">        [-119.113, -192.1043, -253.1478]</span>
+<span class="sd">        &gt;&gt;&gt; obj_dist</span>
+<span class="sd">        [35.8, 64.3, 23.9]</span>
+<span class="sd">        &gt;&gt;&gt; obj_width</span>
+<span class="sd">        [37.8, 10.3, 36.0]</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">BEAM_ANGLE</span> <span class="o">=</span> <span class="mi">10</span> <span class="c1"># approximate width of lidar beam in degrees</span>
+        <span class="n">first_edge</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">second_edge</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">object_angle</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">object_distance</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">object_width</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># compare all adjacent distances for step changes indicating edges</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">delta_distance</span> <span class="o">=</span> <span class="n">distance</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">distance</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="c1"># look for first edge where distance steps down from far to near</span>
+            <span class="k">if</span> <span class="n">delta_distance</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">threshold</span><span class="p">:</span>
+                <span class="n">first_edge</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">index_first_edge</span> <span class="o">=</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span>
+            <span class="c1"># after finding first edge, look for second where distance steps up</span>
+            <span class="k">elif</span> <span class="n">delta_distance</span> <span class="o">&gt;</span> <span class="n">threshold</span> <span class="ow">and</span> <span class="n">first_edge</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">second_edge</span><span class="p">:</span>
+                <span class="n">second_edge</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">index_second_edge</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="c1"># if both edges found, record the center angle, distance, and width</span>
+            <span class="k">if</span> <span class="n">first_edge</span> <span class="ow">and</span> <span class="n">second_edge</span><span class="p">:</span>
+                <span class="n">center_angle</span> <span class="o">=</span> <span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="n">index_first_edge</span><span class="p">]</span>
+                                <span class="o">+</span> <span class="n">angle</span><span class="p">[</span><span class="n">index_second_edge</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span>
+                <span class="n">included_angle</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="n">index_second_edge</span><span class="p">]</span>
+                                     <span class="o">-</span> <span class="n">angle</span><span class="p">[</span><span class="n">index_first_edge</span><span class="p">])</span>
+                <span class="c1"># adjust for beam width</span>
+                <span class="k">if</span> <span class="n">included_angle</span> <span class="o">&gt;</span> <span class="n">BEAM_ANGLE</span><span class="p">:</span>
+                    <span class="n">included_angle</span> <span class="o">=</span> <span class="n">included_angle</span> <span class="o">-</span> <span class="n">BEAM_ANGLE</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">included_angle</span> <span class="o">=</span> <span class="mi">5</span>
+                <span class="c1"># find the average distance of the object</span>
+                <span class="n">average_distance</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">index_first_edge</span><span class="p">,</span> <span class="n">index_second_edge</span><span class="p">):</span>
+                    <span class="n">average_distance</span> <span class="o">+=</span> <span class="n">distance</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">index_first_edge</span> <span class="o">!=</span> <span class="n">index_second_edge</span><span class="p">:</span>
+                    <span class="n">average_distance</span> <span class="o">=</span> <span class="n">average_distance</span> <span class="o">/</span> <span class="p">((</span><span class="n">index_second_edge</span><span class="p">)</span>
+                                                           <span class="o">-</span> <span class="n">index_first_edge</span><span class="p">)</span>
+                <span class="c1"># calculate the approximate object width using law of cosines</span>
+                <span class="n">width</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">distance</span><span class="p">[</span><span class="n">index_first_edge</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span>
+                             <span class="o">+</span> <span class="n">distance</span><span class="p">[</span><span class="n">index_second_edge</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span>
+                             <span class="o">-</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">distance</span><span class="p">[</span><span class="n">index_first_edge</span><span class="p">]</span>
+                                <span class="o">*</span><span class="n">distance</span><span class="p">[</span><span class="n">index_second_edge</span><span class="p">]</span>
+                                <span class="o">*</span><span class="n">cos</span><span class="p">(</span><span class="n">radians</span><span class="p">(</span><span class="n">included_angle</span><span class="p">))))</span>
+                <span class="c1"># add object data to the corresponding lists</span>
+                <span class="n">object_angle</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">center_angle</span><span class="p">)</span>
+                <span class="n">object_distance</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">average_distance</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+                <span class="n">object_width</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+                <span class="c1"># reset to detect more objects</span>
+                <span class="n">first_edge</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">second_edge</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="n">object_angle</span><span class="p">,</span> <span class="n">object_distance</span><span class="p">,</span> <span class="n">object_width</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Turner Howard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

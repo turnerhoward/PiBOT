@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>motion module &mdash; Physics 360 PiBOT 0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="sensors module" href="sensors.html" />
+    <link rel="prev" title="pibot module" href="pibot.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Physics 360 PiBOT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">lib</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="pibot.html">pibot module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">motion module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sensors.html">sensors module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="outputs.html">outputs module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Physics 360 PiBOT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">lib</a></li>
+      <li class="breadcrumb-item active">motion module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/motion.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-motion">
+<span id="motion-module"></span><h1>motion module<a class="headerlink" href="#module-motion" title="Permalink to this heading"></a></h1>
+<p>This module contains the Motion class that allows for user control of
+the PiBOT’s motion. The path planning and motor control required to
+enable smooth and accurate motion are fairly complex and involve
+calculating the desired wheel rotations for each time step, measuring
+the actual rotation with encoders on each motor, and computing the
+commanded motor effort with a closed-loop PID algorithm. Those tasks
+are encapsulated in the Control class, which does not have any
+user-accessible attributes and works behind the scenes on the second
+core of the RP2040 microcontroller to maintain a fast (approximately
+10 ms) time step. The user-accessible methods in the Motion class must
+have access to the private attributes of the Control class to check the
+current status of the PiBOT and request new motion or other actions like
+a pause or resume in motion. When an instance of Motion is created, an
+instance of Control is passed into it as an argument to provide access
+to these private attributes.</p>
+<p>The Control class acts as an event-driven finite-state machine that runs
+in an infinite polling loop on the second core using the _thread module.
+Control attempts to maintain a uniform time step of 10 ms and checks for
+events that require a change of motion state. An event takes place when
+a user calls one of the methods of the Motion class from the main core
+of the RP2040, which in turn sets some parameters in the second core
+where the control loop takes action at the appropriate time by updating
+the motion state and calling motion control methods to handle the path
+planning and control. The methods of the Motion class simply trigger the
+correct response from the control loop and provide the user-requested
+parameters for the motion (e.g., speed, distance, angle, etc.).</p>
+<p>As a result of this multi-threaded, event-driven approach to controlling
+the PiBOT motion, it is possible to send many motion commands to the
+control loop in quick succession. The commands will generate a rapid
+handling of events that is out of sync with how a user might imagine the
+motion commands would work. For example, if on one line of a script, the
+user requests forward motion at 10 cm/s for a distance of 10 cm, that
+command is received by the control loop and started immediately. The
+control loop enters a new state of linear motion and is ready to handle
+new events. Meanwhile, the PiBOT has just started accelerating and won’t
+complete the requested move for about another second. If on the next
+line of the script, the user requests a turn of 90 degrees, the event is
+immediately handled by the control loop and the state is updated to turn
+motion. From the user perspective, the forward motion was skipped
+entirely and all they see is a turn move. This behavior could be
+perplexing at first. The essential thing to understand with this
+multi-threading approach to motion control is that user motion calls are
+not blocking, meaning that they don’t tie up and pause the script until
+the motion is completed. The advantage to this approach is that once
+motion is called, it is managed outside of the main core, leaving the
+user free to take many other actions like checking sensors while the
+PiBOT goes merrily on its way.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Because motion calls are not blocking and can override moves already in
+progress, some users might be tempted to use kludgy time delays to wait
+for each move to finish. That approach can work, but it requires
+calculating the require time for each move and eliminates the advantage
+of non-blocking moves that allow users to run other commands while moves
+are underway. Instead, there is a special argument in many of the Motion
+methods called ‘queue’ that allows motion calls to be run in a sequence.
+When one move finishes, the control loop checks for any moves waiting in
+the queue and automatically starts the next one in line. The examples in
+the following section about the Motion class demonstrate how to use the
+queue.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>By default, when a Motion method is called, the control loop stops any
+active motion and starts the new request immediately. There is an
+argument in many of the Motion methods called ‘protect’ that keeps a
+move from being interrupted by any subsequent motion calls. When using
+the ‘queue’ argument, the ‘protect’ argument must also be used to ensure
+that the queued moves are allowed to finish before the next one starts.</p>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="motion.Motion">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">motion.</span></span><span class="sig-name descname"><span class="pre">Motion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">control</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Generates user motion commands for PiBOT.</p>
+<p>…</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>control</strong> (<em>object</em>) – Instance of the Control class.</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>When creating an instance of the PiBOT class, an instance of the
+Control class is passed to this Motion class to gain access to the
+control attributes.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="motion.Motion.pause">
+<span class="sig-name descname"><span class="pre">pause</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.pause"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.pause" title="Permalink to this definition"></a></dt>
+<dd><p>Smoothly pauses all motion by ramping down velocity.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Calling .pause() halts any motion command, including protected
+and queued motion. High speed moves take longer to ramp down.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="motion.Motion.resume">
+<span class="sig-name descname"><span class="pre">resume</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.resume"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.resume" title="Permalink to this definition"></a></dt>
+<dd><p>Smoothly resumes motion after a pause.</p>
+<p class="rubric">Example</p>
+<p>Import time and create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">time</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Move 10 cm at 5 cm/s and protect the motion from interruptions
+by other motion commands. Pause after 1 second and then resume
+the previous motion after 1 more second. Notice that the
+.pause() method always halts motion, even protected moves.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">resume</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="motion.Motion.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">speed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">protect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.forward" title="Permalink to this definition"></a></dt>
+<dd><p>Commands a forward (or reverse) linear path with constant speed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>speed</strong> (<em>int</em><em> or </em><em>float</em>) – The desired speed in cm/s. Range from 5 to 30 cm/s.</p></li>
+<li><p><strong>distance</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>default=0</em>) – The desired distance to travel in cm. The default of zero
+commands continuous motion.</p></li>
+<li><p><strong>protect</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Prevents interruption by another motion command.</p></li>
+<li><p><strong>queue</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Adds motion call to a queue for a sequence.</p></li>
+<li><p><strong>reverse</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Reverses the direction.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Uses a linear velocity profile to approximate constant
+acceleration by ramping velocity up and down at the start and
+stop, which produces smoother motion with less wheel slippage.</p>
+<p class="rubric">Examples</p>
+<p>Import time and create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">time</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Command continuous motion at 10 cm/s and pause after 2 seconds.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Move 10 cm at 15 cm/s and protect the motion from interruptions
+by other motion commands.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Store moves in the queue to run a sequence. protect must be set
+to True when using a queue to prevent later queue entries from
+interrupting the earlier ones.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">reverse</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">reverse</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An unprotected move can be interrupted at any time with a new
+motion call. The control loop handles the smooth transitions.
+The following example calls forward motion and then reverse
+without stopping first.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">reverse</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="motion.Motion.reverse">
+<span class="sig-name descname"><span class="pre">reverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">speed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">protect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.reverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.reverse" title="Permalink to this definition"></a></dt>
+<dd><p>Commands a linear reverse path with constant speed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>speed</strong> (<em>int</em><em> or </em><em>float</em>) – The desired speed in cm/s. Range from 5 to 30 cm/s.</p></li>
+<li><p><strong>distance</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>default=0</em>) – The desired distance to travel in cm. The default of zero
+commands continuous motion.</p></li>
+<li><p><strong>protect</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Prevents interruption by another motion command.</p></li>
+<li><p><strong>queue</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Adds motion call to a queue for a sequence.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Reverse linear motion is generated using the .forward() method
+with the reverse parameter set to True.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="motion.Motion.turn">
+<span class="sig-name descname"><span class="pre">turn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">protect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.turn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.turn" title="Permalink to this definition"></a></dt>
+<dd><p>Commands a turn in place.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>maximum +/- 720</em>) – The desired rotation angle to turn in place in degrees.
+Positive for left turn, negative for right turn.</p></li>
+<li><p><strong>protect</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Prevents interruption by another motion command.</p></li>
+<li><p><strong>queue</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Adds motion call to a queue for a sequence.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Uses a ramped angular velocity profile to approximate constant
+acceleration by ramping velocity up and down at the start and
+stop, which produces smoother motion with less wheel slippage.
+The angular velocity and acceleration are set by the constants
+TURN_SPD and TURN_ACC and should not be changed.</p>
+<p class="rubric">Examples</p>
+<p>Import time and create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">time</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Turn left and then right back to starting position.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">turn</span><span class="p">(</span><span class="o">-</span><span class="mi">45</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">turn</span><span class="p">(</span><span class="mi">45</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Move 10 cm at 15 cm/s, turn around and return to starting point
+using the queue to create a sequence.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">turn</span><span class="p">(</span><span class="mi">180</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">turn</span><span class="p">(</span><span class="o">-</span><span class="mi">180</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If turn motion is called while another unprotected move is in
+progress, the turn temporarily interrupts the current motion and
+then resumes it after completing the turn as shown below.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">turn</span><span class="p">(</span><span class="mi">180</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="motion.Motion.arc_forward">
+<span class="sig-name descname"><span class="pre">arc_forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">speed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arc_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arc_angle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sense</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'counterclockwise'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">protect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.arc_forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.arc_forward" title="Permalink to this definition"></a></dt>
+<dd><p>Commands a forward (or reverse) arc path with constant speed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>speed</strong> (<em>int</em><em> or </em><em>float</em>) – The desired speed in cm/s. Range from 5 to 30 cm/s.</p></li>
+<li><p><strong>radius</strong> (<em>int</em><em> or </em><em>float</em>) – The desired arc radius in cm. Must be positive. Minimum
+radius is 0.5 cm. Use .turn() method to spin in place.</p></li>
+<li><p><strong>arc_length</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>default=0</em>) – The desired arc length to travel in cm. The default of zero
+commands a continuous arc or allows arc angle to be defined.
+Must be positive.</p></li>
+<li><p><strong>arc_angle</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>default=0</em><em>, </em><em>maximum 360</em>) – The desired arc angle to travel in degrees. The default of
+zero commands a continuous arc or allows arc length to be
+defined. Must be positive.</p></li>
+<li><p><strong>sense</strong> (<em>{'counterclockwise'</em><em>, </em><em>'clockwise'}</em>) – The rotation sense for robot to rotate.</p></li>
+<li><p><strong>protect</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Prevents interruption by another motion command.</p></li>
+<li><p><strong>queue</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Adds motion call to a queue for a sequence.</p></li>
+<li><p><strong>reverse</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Reverses the direction</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Uses a linear velocity profile to approximate constant
+acceleration by ramping velocity up and down at the start and
+stop, which produces smoother motion with less wheel slippage.</p>
+<p class="rubric">Examples</p>
+<p>Import time and create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">time</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Command continuous arc with a 15 cm radius at a speed of 10 cm/s
+and pause after 1 second.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">arc_forward</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Move an arc length of 10 cm with a 20 cm radius at a speed of
+5 cm/s with a clockwise sense.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">arc_forward</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="n">arc_length</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">sense</span><span class="o">=</span><span class="s1">&#39;clockwise&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Store moves in the queue to run a sequence. protect must be set
+to True when using a queue to prevent later queue entries from
+interrupting the earlier ones.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">arc_forward</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">arc_angle</span><span class="o">=</span><span class="mi">45</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">arc_reverse</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">arc_angle</span><span class="o">=</span><span class="mi">45</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">arc_forward</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="n">arc_angle</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">sense</span><span class="o">=</span><span class="s1">&#39;clockwise&#39;</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">arc_reverse</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="n">arc_angle</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">sense</span><span class="o">=</span><span class="s1">&#39;clockwise&#39;</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An unprotected move can be interrupted at any time with a new
+motion call. The control loop handles the smooth transitions.
+The following example calls arc motion and then reverse motion
+without stopping first.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">arc_forward</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="n">sense</span><span class="o">=</span><span class="s1">&#39;clockwise&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">reverse</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="motion.Motion.arc_reverse">
+<span class="sig-name descname"><span class="pre">arc_reverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">speed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arc_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arc_angle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sense</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'counterclockwise'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">protect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.arc_reverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.arc_reverse" title="Permalink to this definition"></a></dt>
+<dd><p>Commands a reverse arc path with constant speed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>speed</strong> (<em>int</em><em> or </em><em>float</em>) – The desired speed in cm/s. Range from 5 to 30 cm/s.</p></li>
+<li><p><strong>radius</strong> (<em>int</em><em> or </em><em>float</em>) – The desired arc radius in cm. Must be positive. Minimum
+radius is 0.5 cm. Use .turn() method to spin in place.</p></li>
+<li><p><strong>arc_length</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>default=0</em>) – The desired arc length to travel in cm. The default of zero
+commands a continuous arc or allows arc angle to be defined.
+Must be positive.</p></li>
+<li><p><strong>arc_angle</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>default=0</em><em>, </em><em>maximum 360</em>) – The desired arc angle to travel in degrees. The default of
+zero commands a continuous arc or allows arc length to be
+defined. Must be positive.</p></li>
+<li><p><strong>sense</strong> (<em>{'counterclockwise'</em><em>, </em><em>'clockwise'}</em>) – The rotation sense for robot to rotate.</p></li>
+<li><p><strong>protect</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Prevents interruption by another motion command.</p></li>
+<li><p><strong>queue</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Adds motion call to a queue for a sequence.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>A reverse arc path is generated using the .arc_forward() method
+with the reverse parameter set to True.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="motion.Motion.steer_left">
+<span class="sig-name descname"><span class="pre">steer_left</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arc_angle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">360</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">protect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.steer_left"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.steer_left" title="Permalink to this definition"></a></dt>
+<dd><p>Steers left in an arc path at a discrete angle if already in motion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>radius</strong> (<em>int</em><em> or </em><em>float</em>) – The desired arc radius in cm. Must be positive. Minimum
+radius is 0.5 cm. Use .turn() method to spin in place.</p></li>
+<li><p><strong>arc_angle</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>default=360</em><em>, </em><em>maximum 360</em>) – The desired arc angle in degrees. The default of 360 (also
+the maximum) commands a full circle. Must be positive.</p></li>
+<li><p><strong>protect</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Prevents interruption by another motion command.</p></li>
+<li><p><strong>right</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Commands a right turn instead of left (changes sense).</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Uses the .arc_forward() method to create a discrete arc path
+for smooth steering without stopping. This method only works
+when the robot is already moving in either a linear or arc path.
+After turning through the specified angle, the robot resumes its
+previous motion path.</p>
+<p class="rubric">Example</p>
+<p>Import time and create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">time</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Start by commanding forward motion at 5 cm/s. Then steer left
+30 degrees and back to the right 210 degrees to loop around.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">steer_left</span><span class="p">(</span><span class="mi">25</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">steer_right</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">210</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="motion.Motion.steer_right">
+<span class="sig-name descname"><span class="pre">steer_right</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arc_angle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">360</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">protect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.steer_right"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.steer_right" title="Permalink to this definition"></a></dt>
+<dd><p>Steers right in an arc path at a discrete angle if already in motion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>radius</strong> (<em>int</em><em> or </em><em>float</em>) – The desired arc radius in cm. Must be positive. Minimum
+radius is 0.5 cm. Use .turn() method to spin in place.</p></li>
+<li><p><strong>arc_angle</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>default=360</em><em>, </em><em>maximum 360</em>) – The desired arc angle in degrees. The default of 360 (also
+the maximum) commands a full circle. Must be positive.</p></li>
+<li><p><strong>protect</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Prevents interruption by another motion command.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Right steering motion is generated using the .steer_left()
+method with the right parameter set to True.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="pibot.html" class="btn btn-neutral float-left" title="pibot module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="sensors.html" class="btn btn-neutral float-right" title="sensors module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Turner Howard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

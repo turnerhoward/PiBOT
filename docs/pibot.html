@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pibot module &mdash; Physics 360 PiBOT 0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="motion module" href="motion.html" />
+    <link rel="prev" title="lib" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Physics 360 PiBOT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">lib</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">pibot module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="motion.html">motion module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sensors.html">sensors module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="outputs.html">outputs module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Physics 360 PiBOT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">lib</a></li>
+      <li class="breadcrumb-item active">pibot module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/pibot.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-pibot">
+<span id="pibot-module"></span><h1>pibot module<a class="headerlink" href="#module-pibot" title="Permalink to this heading"></a></h1>
+<p>This module contains the PiBOT class that incorporates the control,
+motion, sensors, and outputs modules to create a fully functioning
+robot. The PiBOT class contains attributes to track the robot position
+and heading, determine its current state, perform lidar scans of the
+surroundings, and work with the lidar data. The examples in the
+following section demonstrate how to use the PiBOT attributes. The
+motion, sensors, and outputs modules also contain many examples on how
+to use their features from within an instance of the PiBOT class.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="pibot.PiBOT">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pibot.</span></span><span class="sig-name descname"><span class="pre">PiBOT</span></span><a class="reference internal" href="_modules/pibot.html#PiBOT"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Creates a top-level robot object to operate the PiBOT.</p>
+<p>…</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pibot.PiBOT.whiskers">
+<span class="sig-name descname"><span class="pre">whiskers</span></span><a class="headerlink" href="#pibot.PiBOT.whiskers" title="Permalink to this definition"></a></dt>
+<dd><p>Checks for left or right whisker contact.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Whiskers object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pibot.PiBOT.ir">
+<span class="sig-name descname"><span class="pre">ir</span></span><a class="headerlink" href="#pibot.PiBOT.ir" title="Permalink to this definition"></a></dt>
+<dd><p>Checks for left or right IR sensor detection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>IrSensors object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pibot.PiBOT.lidar">
+<span class="sig-name descname"><span class="pre">lidar</span></span><a class="headerlink" href="#pibot.PiBOT.lidar" title="Permalink to this definition"></a></dt>
+<dd><p>Gets the current distance reading from the lidar sensor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>LidarSensor object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pibot.PiBOT.remote">
+<span class="sig-name descname"><span class="pre">remote</span></span><a class="headerlink" href="#pibot.PiBOT.remote" title="Permalink to this definition"></a></dt>
+<dd><p>Gets commands from the IR remote control.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>IrRemote object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pibot.PiBOT.leds">
+<span class="sig-name descname"><span class="pre">leds</span></span><a class="headerlink" href="#pibot.PiBOT.leds" title="Permalink to this definition"></a></dt>
+<dd><p>Controls the left and right neopixel LEDs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>LEDs object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pibot.PiBOT.buzzer">
+<span class="sig-name descname"><span class="pre">buzzer</span></span><a class="headerlink" href="#pibot.PiBOT.buzzer" title="Permalink to this definition"></a></dt>
+<dd><p>Controls the buzzer sound output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Buzzer object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pibot.PiBOT.move">
+<span class="sig-name descname"><span class="pre">move</span></span><a class="headerlink" href="#pibot.PiBOT.move" title="Permalink to this definition"></a></dt>
+<dd><p>Controls the robot motion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Motion object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pibot.PiBOT.lidar_dist">
+<span class="sig-name descname"><span class="pre">lidar_dist</span></span><a class="headerlink" href="#pibot.PiBOT.lidar_dist" title="Permalink to this definition"></a></dt>
+<dd><p>The lidar distance values stored when scanning.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pibot.PiBOT.lidar_angle">
+<span class="sig-name descname"><span class="pre">lidar_angle</span></span><a class="headerlink" href="#pibot.PiBOT.lidar_angle" title="Permalink to this definition"></a></dt>
+<dd><p>The headings (angle values) when scanning with lidar.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pibot.PiBOT.position">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">position</span></span><a class="headerlink" href="#pibot.PiBOT.position" title="Permalink to this definition"></a></dt>
+<dd><p>Gets or set the current position as a list of [x, y]
+coordinates.</p>
+<p class="rubric">Notes</p>
+<p>The global coordinate system is based on the position of the
+centerpoint between the robot’s wheels when motion is first
+started or after resetting. The x axis points forward along the
+path, and the y axis points to the left wheel.</p>
+<p class="rubric">Examples</p>
+<p>Create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Get the position.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">position</span>
+<span class="go">[0, 0]</span>
+</pre></div>
+</div>
+<p>Set the position.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="p">[</span><span class="mf">7.07</span><span class="p">,</span> <span class="o">-</span><span class="mf">7.07</span><span class="p">]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pibot.PiBOT.heading">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">heading</span></span><a class="headerlink" href="#pibot.PiBOT.heading" title="Permalink to this definition"></a></dt>
+<dd><p>Gets or set the current heading angle.</p>
+<p class="rubric">Notes</p>
+<p>The heading angle is measured in degrees from the x axis with
+positive values going counterclockwise.</p>
+<p class="rubric">Examples</p>
+<p>Create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Get the heading.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">heading</span>
+<span class="go">89.54</span>
+</pre></div>
+</div>
+<p>Set the heading.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">heading</span> <span class="o">=</span> <span class="mi">180</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pibot.PiBOT.current_time">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">current_time</span></span><a class="headerlink" href="#pibot.PiBOT.current_time" title="Permalink to this definition"></a></dt>
+<dd><p>Gets the current time in seconds as a read-only value.</p>
+<p>This is the time since an instance of the PiBOT class was
+created. The clock is reset when the .reset() method is called.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pibot.PiBOT.motion_state">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">motion_state</span></span><a class="headerlink" href="#pibot.PiBOT.motion_state" title="Permalink to this definition"></a></dt>
+<dd><p>Gets the current motion state of the robot.</p>
+<p>The motion states are: ‘stop’, ‘pause’, ‘linear’, ‘turn’, ‘arc’,
+and ‘steer’.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pibot.PiBOT.busy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">busy</span></span><a class="headerlink" href="#pibot.PiBOT.busy" title="Permalink to this definition"></a></dt>
+<dd><p>Determines if the robot is busy executing motion commands.</p>
+<p>The robot is considered busy if protected motion is being
+commanded or if commands are waiting in the queue.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pibot.PiBOT.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.reset" title="Permalink to this definition"></a></dt>
+<dd><p>Stops motion, exits thread, and reinitializes attributes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pibot.PiBOT.scan">
+<span class="sig-name descname"><span class="pre">scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">increment</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.scan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.scan" title="Permalink to this definition"></a></dt>
+<dd><p>Sweeps the robot through an angle and stores lidar data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle</strong> (<em>int</em><em>, </em><em>float</em><em>, </em><em>maximum +/- 720</em>) – A value in degrees to rotate the robot for a scan sweep.</p></li>
+<li><p><strong>increment</strong> (<em>int</em><em>, </em><em>float</em><em>, </em><em>default=2.5</em>) – The interval in degrees at which to capture lidar data.</p></li>
+<li><p><strong>filename</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the file for saving the lidar data to a CSV.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The corresponding angle and distance values, which can
+also be accessed through the .lidar_angle and .lidar_dist
+attributes.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>2-tuple of lists</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The default angle increment of the lidar scan is set to 2.5
+degrees, which represents a good compromise between the speed
+and resolution during the turn motion. The actual angle stored
+in .lidar_angle varies because the data is collected dynamically
+while the robot turns. The lidar detects a field of view of
+about 10 degrees, meaning the data spaced at 2.5 degrees
+represents a higher resolution than the lidar can really discern
+and results in overlapping ranges of detection.</p>
+<p>The optional filename is used to save a CSV file to the RP2040’s
+memory, which can be accessed with Thonny and downloaded to the
+computer for analysis.</p>
+<p class="rubric">Examples</p>
+<p>Create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Command a 360 degree clockwise scan. The returned lists are
+stored in local variables as shown; however, it is not
+necessary to use the returned values because they can also
+be accessed directly with the .lidar_dist and .lidar_angle
+attributes.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Command a 180 degree counterclockwise scan and store the data
+to a file called ‘test_data’. The data is not saved to local
+variables. In the output, it is clear that the default angle
+increment of 2.5 degrees cannot be followed exactly but tracks
+fairly close to the desired step size.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="mi">180</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;test_data&#39;</span><span class="p">)</span>
+<span class="go">([0.0, 2.713043, 6.052173, 8.869564, 10.01739, 12.52174,...</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pibot.PiBOT.max_distance">
+<span class="sig-name descname"><span class="pre">max_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.max_distance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.max_distance" title="Permalink to this definition"></a></dt>
+<dd><p>Finds the maximum value in the lidar scan data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle</strong> (<em>list</em>) – The lidar angle data</p></li>
+<li><p><strong>distance</strong> (<em>list</em>) – The lidar distance data</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A pair comprising the heading angle and maximum distance.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>2-tuple</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Finds the maximum value and corresponsing angle in scan data. If
+there is more than one identical maximum value, the first one in
+the list will be returned. If there are values that are out of
+range (i.e., 132 cm), the method finds the block of 132 cm
+values in the distance list that is longest and returns the
+angle near the center of the block. If there is only one 132 cm
+value, that will be returned as the maximum. If there is more
+than one non-adjacent single 132 cm value, the first one in the
+list will be returned as the maximum.</p>
+<p class="rubric">Examples</p>
+<p>Create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Command a 360 degree clockwise scan and use the returned values
+to find the maximum.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">max_distance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">)</span>
+<span class="go">(-188.4522, 132)</span>
+</pre></div>
+</div>
+<p>The arguments can also be the lidar data taken directly from the
+PiBOT attributes instead of local copies used in the previous
+example.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">)</span>
+<span class="go">([0.0, -2.504347, -5.321739, -7.61739, -10.53913, -12.93913,...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">max_distance</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">lidar_angle</span><span class="p">,</span> <span class="n">robot</span><span class="o">.</span><span class="n">lidar_dist</span><span class="p">)</span>
+<span class="go">(-80.34782, 91.0)</span>
+</pre></div>
+</div>
+<p>The scan can also return its values directly to the max_distance
+method by using the unpacking operator (*) as shown.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">max_distance</span><span class="p">(</span><span class="o">*</span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">))</span>
+<span class="go">(-78.78259, 90.0)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pibot.PiBOT.min_distance">
+<span class="sig-name descname"><span class="pre">min_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.min_distance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.min_distance" title="Permalink to this definition"></a></dt>
+<dd><p>Finds the minimum value in the lidar scan data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle</strong> (<em>list</em>) – The lidar angle data</p></li>
+<li><p><strong>distance</strong> (<em>list</em>) – The lidar distance data</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A pair comprising the heading angle and minimum distance.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>2-tuple</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Finds the minimum value and corresponsing angle in scan data. If
+there is more than one identical minimum value, the first one in
+the list will be returned.</p>
+<p class="rubric">Examples</p>
+<p>Create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Command a 360 degree clockwise scan and use the returned values
+to find the minimum.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">min_distance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">)</span>
+<span class="go">(-272.974, 18.2)</span>
+</pre></div>
+</div>
+<p>The arguments can also be the lidar data taken directly from the
+PiBOT attributes instead of local copies used in the previous
+example.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">)</span>
+<span class="go">([0.0, -2.713043, -5.634782, -7.721738, -10.22609, -12.83478,...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">min_distance</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">lidar_angle</span><span class="p">,</span> <span class="n">robot</span><span class="o">.</span><span class="n">lidar_dist</span><span class="p">)</span>
+<span class="go">(-120.0, 13.8)</span>
+</pre></div>
+</div>
+<p>The scan can also return its values directly to the min_distance
+method by using the unpacking operator (*) as shown.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">min_distance</span><span class="p">(</span><span class="o">*</span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">))</span>
+<span class="go">(-279.9652, 19.6)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pibot.PiBOT.detect_objects">
+<span class="sig-name descname"><span class="pre">detect_objects</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.detect_objects"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.detect_objects" title="Permalink to this definition"></a></dt>
+<dd><p>Attempts to detect one or more objects in the foreground.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle</strong> (<em>list</em>) – The lidar angle data</p></li>
+<li><p><strong>distance</strong> (<em>list</em>) – The lidar distance data</p></li>
+<li><p><strong>threshold</strong> (<em>int</em><em>, </em><em>float</em><em>, </em><em>default=10</em>) – Minimum step size in cm between adjacent lidar distance
+values to indicate an edge is present.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A triplet of lists comprising the approximate heading angles
+in degrees to the center of the objects, the average
+distances in cm to the objects, and their approximate widths
+in cm.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>3-tuple of lists</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Attempts to find objects in the foreground by calculating the
+difference between adjacent lidar distance values to detemine
+if there is a step larger than a threshold value. The step
+represents an edge between a near and distant object. If both a
+step from far to near and then a corresponding step from near to
+far are detected, an object is recorded. The center angle,
+average distance, and approximate width of the object are stored
+in the corresponsing lists. After finding the first object,
+detection continues until reaching the end of the data list. If
+the object is too far away or too narrow, it may not be
+detected. It’s also possible that this method will return data
+for an object that doesn’t really exist. Adjusting the threshold
+value could help fine tune the performance.</p>
+<p class="rubric">Example</p>
+<p>Create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Command a 360 degree clockwise scan and use the returned values
+to detect objects. In this case the unpacking operator is used
+to pass the angle and distance lists returned from the scan
+directly into the .detect_objects() method. The returned object
+lists are stored as local variables as shown. In this example
+three objects are detected.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">obj_angle</span><span class="p">,</span> <span class="n">obj_dist</span><span class="p">,</span> <span class="n">obj_width</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">detect_objects</span><span class="p">(</span><span class="o">*</span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">obj_angle</span>
+<span class="go">[-119.113, -192.1043, -253.1478]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">obj_dist</span>
+<span class="go">[35.8, 64.3, 23.9]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">obj_width</span>
+<span class="go">[37.8, 10.3, 36.0]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="lib" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="motion.html" class="btn btn-neutral float-right" title="motion module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Turner Howard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

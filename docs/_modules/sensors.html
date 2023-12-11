@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sensors &mdash; Physics 360 PiBOT 0.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Physics 360 PiBOT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">lib</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Physics 360 PiBOT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">sensors</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for sensors</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">constants</span> <span class="k">as</span> <span class="nn">cnst</span>
+<span class="kn">from</span> <span class="nn">utime</span> <span class="kn">import</span> <span class="n">ticks_us</span><span class="p">,</span> <span class="n">ticks_diff</span><span class="p">,</span> <span class="n">ticks_add</span><span class="p">,</span> <span class="n">sleep_us</span>
+<span class="kn">from</span> <span class="nn">machine</span> <span class="kn">import</span> <span class="n">Pin</span><span class="p">,</span> <span class="n">time_pulse_us</span>
+<span class="kn">from</span> <span class="nn">rp2</span> <span class="kn">import</span> <span class="n">StateMachine</span><span class="p">,</span> <span class="n">asm_pio</span><span class="p">,</span> <span class="n">PIO</span>
+
+
+<div class="viewcode-block" id="Whiskers"><a class="viewcode-back" href="../sensors.html#sensors.Whiskers">[docs]</a><span class="k">class</span> <span class="nc">Whiskers</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Configures whisker sensors.</span>
+
+<span class="sd">    ...</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The wire whiskers are contact sensors that must be pressed with</span>
+<span class="sd">    sufficient force to detect an obstacle. The fixed end of each</span>
+<span class="sd">    whisker connects to ground. When the free end of a whisker is</span>
+<span class="sd">    deflected toward the robot, it makes electrical contact with a metal</span>
+<span class="sd">    screw that is connected to a GPIO pin that is normally held high</span>
+<span class="sd">    using the built-in pull-up resistor of the GPIO. When the grounded</span>
+<span class="sd">    whisker wire touches the screw, the pin is pulled low.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Initializes the whiskers with appropriate GPIO pins.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_whisker_left</span> <span class="o">=</span> <span class="n">Pin</span><span class="p">(</span><span class="n">cnst</span><span class="o">.</span><span class="n">WHISKER_LEFT</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">IN</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">PULL_UP</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_whisker_right</span> <span class="o">=</span> <span class="n">Pin</span><span class="p">(</span><span class="n">cnst</span><span class="o">.</span><span class="n">WHISKER_RIGHT</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">IN</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">PULL_UP</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">left</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines if left whisker is making contact.</span>
+
+<span class="sd">        Return</span>
+<span class="sd">        ------</span>
+<span class="sd">        bool</span>
+<span class="sd">            Indicates if the whisker is making contact (i.e., pin is low).</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Test for the left whisker making contact and turn on the left LED.</span>
+
+<span class="sd">        &gt;&gt;&gt; while True:</span>
+<span class="sd">        &gt;&gt;&gt;     if robot.whiskers.left:</span>
+<span class="sd">        &gt;&gt;&gt;         robot.leds.on(robot.leds.RED, side=&#39;left&#39;)</span>
+<span class="sd">        &gt;&gt;&gt;     else:</span>
+<span class="sd">        &gt;&gt;&gt;         robot.leds.off(side=&#39;left&#39;)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_whisker_left</span><span class="o">.</span><span class="n">value</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">right</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines if right whisker is making contact.</span>
+
+<span class="sd">        Return</span>
+<span class="sd">        ------</span>
+<span class="sd">        bool</span>
+<span class="sd">            Indicates if the whisker is making contact (i.e., pin is low).</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Test for the right whisker making contact and turn on the right LED.</span>
+
+<span class="sd">        &gt;&gt;&gt; while True:</span>
+<span class="sd">        &gt;&gt;&gt;     if robot.whiskers.right:</span>
+<span class="sd">        &gt;&gt;&gt;         robot.leds.on(robot.leds.RED, side=&#39;right&#39;)</span>
+<span class="sd">        &gt;&gt;&gt;     else:</span>
+<span class="sd">        &gt;&gt;&gt;         robot.leds.off(side=&#39;right&#39;)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_whisker_right</span><span class="o">.</span><span class="n">value</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="IrSensors"><a class="viewcode-back" href="../sensors.html#sensors.IrSensors">[docs]</a><span class="k">class</span> <span class="nc">IrSensors</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Configures infrared sensors.</span>
+
+<span class="sd">    ...</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Review documentation for Pololu 38 kHz IR Proximity Sensor, Fixed</span>
+<span class="sd">    Gain, Low Brightness (Pololu item #: 2579):</span>
+<span class="sd">    https://www.pololu.com/product/2579. The output is normally high</span>
+<span class="sd">    until the sensor detects sufficient reflected IR to bring the pin</span>
+<span class="sd">    low. The enable pin turns off the IR emitter when pulled low (it is</span>
+<span class="sd">    normally high). The enable feature is used to prevent interference</span>
+<span class="sd">    between the left and right IR sensors, ensuring that only one is</span>
+<span class="sd">    active when a reading is taken. The lidar sensor and IR remote</span>
+<span class="sd">    control can produce false triggering of the IR sensors because all</span>
+<span class="sd">    of these devices emit pulses of infrared light at a modulated</span>
+<span class="sd">    frequency of 38 kHz. To prevent this interference from the lidar</span>
+<span class="sd">    sensor and remote control, the IR sensors are sampled over 100 ms</span>
+<span class="sd">    and an average reading is recorded. This strategy effectively</span>
+<span class="sd">    ignores all short pulses from the lidar and remote control and only</span>
+<span class="sd">    triggers a reading with a sustained input of reflected IR light from</span>
+<span class="sd">    the IR sensor&#39;s own emitter.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Initializes the IR sensors with appropriate GPIO.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_IR_left</span> <span class="o">=</span> <span class="n">Pin</span><span class="p">(</span><span class="n">cnst</span><span class="o">.</span><span class="n">IR_LEFT</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">IN</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_IR_right</span> <span class="o">=</span> <span class="n">Pin</span><span class="p">(</span><span class="n">cnst</span><span class="o">.</span><span class="n">IR_RIGHT</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">IN</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_IR_left_enable</span> <span class="o">=</span> <span class="n">Pin</span><span class="p">(</span><span class="n">cnst</span><span class="o">.</span><span class="n">IR_LEFT_ENABLE</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">OUT</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_IR_right_enable</span> <span class="o">=</span> <span class="n">Pin</span><span class="p">(</span><span class="n">cnst</span><span class="o">.</span><span class="n">IR_RIGHT_ENABLE</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">OUT</span><span class="p">)</span>
+        <span class="c1"># disable IR sensors at startup</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_IR_left_enable</span><span class="o">.</span><span class="n">low</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_IR_right_enable</span><span class="o">.</span><span class="n">low</span><span class="p">()</span>
+        <span class="c1"># create attributes to store the state of IR sensors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_left</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_right</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># create variables to measure the time average of the sensor readings</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reading_left</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reading_right</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_count_left</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_count_right</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_time_left</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_time_right</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">left</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines the current state of the left IR sensor.</span>
+
+<span class="sd">        Return</span>
+<span class="sd">        ------</span>
+<span class="sd">        bool</span>
+<span class="sd">            Indicates if the IR sensor is detecting an object.</span>
+
+<span class="sd">        Note</span>
+<span class="sd">        ----</span>
+<span class="sd">        Because the read method for the IR sensors uses a time average</span>
+<span class="sd">        to determine if the sensor is detecting and to reject spurious</span>
+<span class="sd">        pulses of IR from other sources, the value must be checked</span>
+<span class="sd">        frequently in a polling loop as shown in the following example.</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from robot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        If the left IR sensor is detecting, turn on the left LED.</span>
+
+<span class="sd">        &gt;&gt;&gt; while True:</span>
+<span class="sd">        &gt;&gt;&gt;     if robot.ir.left:</span>
+<span class="sd">        &gt;&gt;&gt;         robot.leds.on(robot.leds.BLUE, side=&#39;left&#39;)</span>
+<span class="sd">        &gt;&gt;&gt;     else:</span>
+<span class="sd">        &gt;&gt;&gt;         robot.leds.off(side=&#39;left&#39;)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_read</span><span class="p">(</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">right</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines the current state of the right IR sensor.</span>
+
+<span class="sd">        Return</span>
+<span class="sd">        ------</span>
+<span class="sd">        bool</span>
+<span class="sd">            Indicates if the IR sensor is detecting an object.</span>
+
+<span class="sd">        Note</span>
+<span class="sd">        ----</span>
+<span class="sd">        Because the read method for the IR sensors uses a time average</span>
+<span class="sd">        to determine if the sensor is detecting and to reject spurious</span>
+<span class="sd">        pulses of IR from other sources, the value must be checked</span>
+<span class="sd">        frequently in a polling loop as shown in the following example.</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        If the right IR sensor is detecting, turn on the right LED.</span>
+
+<span class="sd">        &gt;&gt;&gt; while True:</span>
+<span class="sd">        &gt;&gt;&gt;     if robot.ir.right:</span>
+<span class="sd">        &gt;&gt;&gt;         robot.leds.on(robot.leds.BLUE, side=&#39;right&#39;)</span>
+<span class="sd">        &gt;&gt;&gt;     else:</span>
+<span class="sd">        &gt;&gt;&gt;         robot.leds.off(side=&#39;right&#39;)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_read</span><span class="p">(</span><span class="s1">&#39;right&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">_read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">side</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reads the current state of the left and right IR sensors.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        side : {&#39;left&#39;, &#39;right&#39;}</span>
+<span class="sd">            The side to read.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The read routine uses a time average strategy to avoid detecting</span>
+<span class="sd">        short pulses from the remote control or lidar sensor that emit</span>
+<span class="sd">        at the same frequency of 38 kHz. The detection has a slight</span>
+<span class="sd">        delay (about 100 ms) to complete the average, but creates a more</span>
+<span class="sd">        robust detection with no false readings. Readings must be taken</span>
+<span class="sd">        frequently in a polling loop (10-20 ms cycle time or faster) for</span>
+<span class="sd">        the averaging strategy to work effectively.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># set fraction of samples that must be high for detection</span>
+        <span class="n">THRESHOLD</span> <span class="o">=</span> <span class="mf">0.75</span>
+        <span class="c1"># set 100 ms clock for sampling the sensors</span>
+        <span class="k">if</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_time_left</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_time_left</span> <span class="o">=</span> <span class="n">ticks_add</span><span class="p">(</span><span class="n">ticks_us</span><span class="p">(),</span> <span class="mi">100_000</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;right&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_time_right</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_time_right</span> <span class="o">=</span> <span class="n">ticks_add</span><span class="p">(</span><span class="n">ticks_us</span><span class="p">(),</span> <span class="mi">100_000</span><span class="p">)</span>
+        <span class="c1"># enable the correct IR emitter</span>
+        <span class="k">if</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_IR_left_enable</span><span class="o">.</span><span class="n">high</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;right&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_IR_right_enable</span><span class="o">.</span><span class="n">high</span><span class="p">()</span>
+        <span class="c1"># dwell to allow IR emitter time to power on</span>
+        <span class="n">sleep_us</span><span class="p">(</span><span class="mi">250</span><span class="p">)</span>
+        <span class="c1"># get the state of the correct IR sensor, increment count, and disable</span>
+        <span class="k">if</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_reading_left</span> <span class="o">+=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_IR_left</span><span class="o">.</span><span class="n">value</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_count_left</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_IR_left_enable</span><span class="o">.</span><span class="n">low</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;right&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_reading_right</span> <span class="o">+=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_IR_right</span><span class="o">.</span><span class="n">value</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_count_right</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_IR_right_enable</span><span class="o">.</span><span class="n">low</span><span class="p">()</span>
+        <span class="c1"># check to see if the testing period for averaging has ended</span>
+        <span class="k">if</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span> <span class="ow">and</span> <span class="n">ticks_diff</span><span class="p">(</span><span class="n">ticks_us</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_time_left</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">average</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reading_left</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_count_left</span>
+            <span class="c1"># reset all values to restart sampling</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_reading_left</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_count_left</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_time_left</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="c1"># return state of sensor</span>
+            <span class="k">if</span> <span class="n">average</span> <span class="o">&gt;</span> <span class="n">THRESHOLD</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_left</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_left</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">elif</span> <span class="n">side</span> <span class="o">==</span> <span class="s1">&#39;right&#39;</span> <span class="ow">and</span> <span class="n">ticks_diff</span><span class="p">(</span><span class="n">ticks_us</span><span class="p">(),</span>
+                                            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_time_right</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">average</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reading_right</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_count_right</span>
+            <span class="c1"># reset all values to restart sampling</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_reading_right</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_count_right</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_time_right</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="c1"># return state of sensor</span>
+            <span class="k">if</span> <span class="n">average</span> <span class="o">&gt;</span> <span class="n">THRESHOLD</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_right</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_right</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="LidarSensor"><a class="viewcode-back" href="../sensors.html#sensors.LidarSensor">[docs]</a><span class="k">class</span> <span class="nc">LidarSensor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Configures lidar sensor.</span>
+
+<span class="sd">    ...</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Review documentation for Pololu Distance Sensor with Pulse Width</span>
+<span class="sd">    Output, 130cm Max (Pololu item #: 4071):</span>
+<span class="sd">    https://www.pololu.com/product/4071. The sensor produces a</span>
+<span class="sd">    continuous pulsed output with the pulse width in microseconds</span>
+<span class="sd">    corresponding to the distance by the relationship:</span>
+<span class="sd">    d = (2 mm / 1 microsecond) * (pulse_width - 1000 microseconds).</span>
+<span class="sd">    A pulse width of 2 ms indicates no objects are in range.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initializes the lidar sensor with appropriate GPIO pin.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lidar</span> <span class="o">=</span> <span class="n">Pin</span><span class="p">(</span><span class="n">cnst</span><span class="o">.</span><span class="n">LIDAR</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">IN</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LidarSensor.read"><a class="viewcode-back" href="../sensors.html#sensors.LidarSensor.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Samples the pulse width of lidar sensor to measure distance.</span>
+
+<span class="sd">        Return</span>
+<span class="sd">        ------</span>
+<span class="sd">        float</span>
+<span class="sd">            The distance in cm from the lidar sensor to an object. The</span>
+<span class="sd">            maximum is 132 cm, which is also returned if the distance is</span>
+<span class="sd">            greater than 132 cm or the pulse width indicates no object</span>
+<span class="sd">            is in range.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Averaging is possible by setting the constant SAMPLES_LIDAR to</span>
+<span class="sd">        an integer greater than 1. The typical time required for a lidar</span>
+<span class="sd">        reading is 10 ms or less. Averaging improves the precision of</span>
+<span class="sd">        the reading at the cost of added measurement time.</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Print the lidar reading every 0.1 seconds.</span>
+
+<span class="sd">        &gt;&gt;&gt; while True:</span>
+<span class="sd">        &gt;&gt;&gt;     print(robot.lidar.read())</span>
+<span class="sd">        &gt;&gt;&gt;     time.sleep(.1)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># initialize pulse_width measurement variable for the loop</span>
+        <span class="n">pulse_width</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">pulse_width_temp</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># loop for averaging (set SAMPLES_LIDAR to 1 for no averaging)</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">cnst</span><span class="o">.</span><span class="n">SAMPLES_LIDAR</span><span class="p">):</span>
+            <span class="c1"># wait until a high pulse width of greater than 1 ms is captured</span>
+            <span class="k">while</span> <span class="n">pulse_width_temp</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">:</span>
+                <span class="c1"># wait in the while loop if already in a high pulse at start</span>
+                <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lidar</span><span class="o">.</span><span class="n">value</span><span class="p">():</span>
+                    <span class="k">continue</span>
+                <span class="c1"># get high pulse width in microseconds with 12 ms timeout</span>
+                <span class="n">pulse_width_temp</span> <span class="o">=</span> <span class="n">time_pulse_us</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lidar</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">12_000</span><span class="p">)</span>
+            <span class="c1"># sum the pulse width measurements for use in averaging</span>
+            <span class="n">pulse_width</span> <span class="o">+=</span> <span class="n">pulse_width_temp</span>
+        <span class="c1"># finish the averaging calulation after summing all samples in the loop</span>
+        <span class="n">pulse_width</span> <span class="o">=</span> <span class="n">pulse_width</span><span class="o">/</span><span class="n">cnst</span><span class="o">.</span><span class="n">SAMPLES_LIDAR</span>
+        <span class="c1"># calculate the distance in centimeters to a precision of 0.1 cm</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">pulse_width</span><span class="o">-</span><span class="mi">1000</span><span class="p">)</span> <span class="o">/</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># prevent a negative value</span>
+        <span class="k">if</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># check for values out of range and no detection (pulse width = 2 ms)</span>
+        <span class="k">if</span> <span class="n">distance</span> <span class="o">&gt;</span> <span class="mi">132</span><span class="p">:</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="mi">132</span>
+        <span class="k">return</span> <span class="n">distance</span></div></div>
+
+
+<div class="viewcode-block" id="IrRemote"><a class="viewcode-back" href="../sensors.html#sensors.IrRemote">[docs]</a><span class="k">class</span> <span class="nc">IrRemote</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configures IR receiver for remote control using a state machine.</span>
+
+<span class="sd">    ...</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The TSOP38438 IR receiver sits at the top of the PiBOT. A custom</span>
+<span class="sd">    state machine receives and decodes the signals from the remote. The</span>
+<span class="sd">    state machine is fault tolerant--it checks for the correct number</span>
+<span class="sd">    and length of bursts coming in. If there is a fault caused by</span>
+<span class="sd">    dropped bits because the remote is out of range, the program</span>
+<span class="sd">    restarts and clears any partially received data. To ensure the user</span>
+<span class="sd">    accessible remote commands are updated frequently, an instance of</span>
+<span class="sd">    this class is passed as an argument when creating an instance of the</span>
+<span class="sd">    Control class. The control loop runs at an average of 10 ms cycles</span>
+<span class="sd">    on the second core of the RP2040. With this strategy, the user only</span>
+<span class="sd">    needs to use the three properties: command, stale, and repeat to</span>
+<span class="sd">    work with remote control commands.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates state machine for IR receiver decoding.&quot;&quot;&quot;</span>
+
+        <span class="c1"># create instance of StateMachine on PIO 1 (i.e., sm_id=4)</span>
+        <span class="c1"># in_base sets where the JMP instruction tests for high conditions</span>
+        <span class="n">base_pin</span> <span class="o">=</span> <span class="n">Pin</span><span class="p">(</span><span class="n">cnst</span><span class="o">.</span><span class="n">IR_REMOTE</span><span class="p">,</span> <span class="n">Pin</span><span class="o">.</span><span class="n">IN</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ir_remote</span> <span class="o">=</span> <span class="n">StateMachine</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sm_ir_remote</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="mi">21_335</span><span class="p">,</span>
+                                       <span class="n">in_base</span><span class="o">=</span><span class="n">base_pin</span><span class="p">,</span> <span class="n">jmp_pin</span><span class="o">=</span><span class="n">base_pin</span><span class="p">)</span>
+        <span class="c1"># activate the state machine</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ir_remote</span><span class="o">.</span><span class="n">active</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># create attributes to store new commands and detect repeat codes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_command</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stale</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_repeat</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># create start time for testing timing of repeat codes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">command</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the current remote command.</span>
+
+<span class="sd">        Return</span>
+<span class="sd">        ------</span>
+<span class="sd">        int, None</span>
+<span class="sd">            The current decoded command from the IR receiver. None</span>
+<span class="sd">            indicates that no new code or repeat code has been received.</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Print the current remote command at 0.1 second intervals.</span>
+
+<span class="sd">        &gt;&gt;&gt; print(&#39;Press a button on the remote control&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; while True:</span>
+<span class="sd">        &gt;&gt;&gt;     print(robot.remote.command)</span>
+<span class="sd">        &gt;&gt;&gt;     time.sleep(.1)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">command</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_command</span>
+        <span class="k">if</span> <span class="n">command</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stale</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stale</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="n">command</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">stale</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines if the remote command has been read and is stale.</span>
+
+<span class="sd">        Return</span>
+<span class="sd">        ------</span>
+<span class="sd">        bool</span>
+<span class="sd">            True if the remote command is stale (i.e., button press</span>
+<span class="sd">            recorded and command read but not yet cleared from memory).</span>
+
+<span class="sd">        Note</span>
+<span class="sd">        ----</span>
+<span class="sd">        The stale property is set False when a new command is received</span>
+<span class="sd">        and decoded by the state machine, and before it is read by the</span>
+<span class="sd">        user with the command property (i.e., robot.remote.command).</span>
+<span class="sd">        Checking the command property, even just once in a conditional</span>
+<span class="sd">        test, sets the stale property to True. Therefore, the stale</span>
+<span class="sd">        property must always be checked BEFORE the command property or</span>
+<span class="sd">        it will not provide any useful information.</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Testing for stale commands allows the command to be read once</span>
+<span class="sd">        and only once for each instance of a button press.</span>
+
+<span class="sd">        &gt;&gt;&gt; print(&#39;Press a button on the remote control&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; while True:</span>
+<span class="sd">        &gt;&gt;&gt;     if not robot.remote.stale:</span>
+<span class="sd">        &gt;&gt;&gt;         print(robot.remote.command)</span>
+<span class="sd">        &gt;&gt;&gt;     time.sleep(.1)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stale</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">repeat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines if the remote command is being repeated.</span>
+
+<span class="sd">        Return</span>
+<span class="sd">        ------</span>
+<span class="sd">        bool</span>
+<span class="sd">            True if the remote command is actively being repeated (i.e.,</span>
+<span class="sd">            the button is being held down).</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Print the command at 0.1 second intervals only when a button is</span>
+<span class="sd">        held down.</span>
+
+<span class="sd">        &gt;&gt;&gt; print(&#39;Press and hold a button on the remote control&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; while True:</span>
+<span class="sd">        &gt;&gt;&gt;     if robot.remote.repeat:</span>
+<span class="sd">        &gt;&gt;&gt;         command = robot.remote.command</span>
+<span class="sd">        &gt;&gt;&gt;         print(f&#39;{command} button is held down.&#39;)</span>
+<span class="sd">        &gt;&gt;&gt;     time.sleep(.1)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repeat</span>
+
+    <span class="nd">@asm_pio</span><span class="p">(</span><span class="n">in_shiftdir</span><span class="o">=</span><span class="n">PIO</span><span class="o">.</span><span class="n">SHIFT_RIGHT</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_sm_ir_remote</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Special assembly instructions for the state machine</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This state machine uses 30 of the available 32 instructions.</span>
+<span class="sd">        There may be ways to make it more compact and efficient, but it</span>
+<span class="sd">        serves the purpose well in its current form. The program watches</span>
+<span class="sd">        for the start burst and start pause of a new code or repeat</span>
+<span class="sd">        command. If the longer 4.5 ms pause is detected, the 32-bit</span>
+<span class="sd">        signal is decoded based on decrement counters using the X and Y</span>
+<span class="sd">        scratch registers to keep track of the pause duration (i.e.,</span>
+<span class="sd">        high time) and the bit count. If the shorter 2.5 ms pause is</span>
+<span class="sd">        detected, the program pushes a null code to the RX FIFO to</span>
+<span class="sd">        indicate a repeat command was detected. If a start condition is</span>
+<span class="sd">        not met, the program starts over. If an expected burst does not</span>
+<span class="sd">        arrive after either a short pause (coding for a 0) or a long</span>
+<span class="sd">        pause (coding for a 1), a fault condition is met and the program</span>
+<span class="sd">        restarts and clears the ISR to get rid of any partial codes</span>
+<span class="sd">        received. Only when all 32 bits are received as expected does</span>
+<span class="sd">        the program push the full 32-bit ISR to the RX FIFO. The</span>
+<span class="sd">        POSITION 0-4 markers in the comments of the assembly</span>
+<span class="sd">        instructions correspond to features of the encoded IR signal.</span>
+<span class="sd">        A separate annotated diagram is part of the PiBOT documentation.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">label</span><span class="p">(</span><span class="s2">&quot;restart&quot;</span><span class="p">)</span>
+        <span class="n">mov</span><span class="p">(</span><span class="n">isr</span><span class="p">,</span> <span class="n">null</span><span class="p">)</span> <span class="c1"># reset ISR to zero to clear any partial codes received</span>
+        <span class="c1"># wait for start burst and measure 3 ms before continuing</span>
+        <span class="nb">set</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">31</span><span class="p">)</span> <span class="c1"># 64 cycles, two jmp instructions (46.875*64 = 3000 us)</span>
+        <span class="n">wait</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">pin</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="c1"># wait for falling edge (POSITION 0)</span>
+        <span class="n">label</span><span class="p">(</span><span class="s2">&quot;start_burst&quot;</span><span class="p">)</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="n">pin</span><span class="p">,</span> <span class="s2">&quot;restart&quot;</span><span class="p">)</span> <span class="c1"># if high, restart</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="n">x_dec</span><span class="p">,</span> <span class="s2">&quot;start_burst&quot;</span><span class="p">)</span> <span class="c1"># if X not zero keep timing start burst</span>
+        <span class="c1"># wait for start pause and measure 3 ms before continuing</span>
+        <span class="nb">set</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">31</span><span class="p">)</span> <span class="c1"># 63 cycles, two jmp instructions (46.875*63 = 2953.125 us)</span>
+        <span class="n">wait</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">pin</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="c1"># wait for rising edge (POSITION 1)</span>
+        <span class="n">label</span><span class="p">(</span><span class="s2">&quot;start_pause&quot;</span><span class="p">)</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="n">x_dec</span><span class="p">,</span> <span class="s2">&quot;start_pause_test&quot;</span><span class="p">)</span> <span class="c1"># if X not zero keep timing start pause</span>
+        <span class="c1"># wait for code burst, measure pause, and decode</span>
+        <span class="nb">set</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="mi">31</span><span class="p">)</span> <span class="c1"># 32 bit code counter</span>
+        <span class="n">label</span><span class="p">(</span><span class="s2">&quot;decode_start&quot;</span><span class="p">)</span>
+        <span class="nb">set</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span> <span class="c1"># 17 cycles, two jmp instructions (46.875*17 = 796.875 us)</span>
+        <span class="n">wait</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">pin</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="c1"># wait for falling edge--start of code pulse</span>
+        <span class="n">wait</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">pin</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="c1"># wait for rising edge--start of code pause(POSITION 2)</span>
+        <span class="n">label</span><span class="p">(</span><span class="s2">&quot;continue_decode_1&quot;</span><span class="p">)</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="n">x_dec</span><span class="p">,</span> <span class="s2">&quot;test_input_1&quot;</span><span class="p">)</span> <span class="c1"># if X not zero keep timing code pause</span>
+        <span class="n">in_</span><span class="p">(</span><span class="n">pins</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="c1"># if counter ends (input still high), a 1 should be stored</span>
+        <span class="c1"># set counter for fault test</span>
+        <span class="nb">set</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">11</span><span class="p">)</span> <span class="c1"># ((17 + 2 + 23)*46.875 = 1,968.75 us total)</span>
+        <span class="n">label</span><span class="p">(</span><span class="s2">&quot;continue_decode_2&quot;</span><span class="p">)</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="n">x_dec</span><span class="p">,</span> <span class="s2">&quot;test_input_2&quot;</span><span class="p">)</span> <span class="c1"># if X not zero keep timing code pause</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="s2">&quot;restart&quot;</span><span class="p">)</span> <span class="c1"># if expected burst (low input) doesn&#39;t arrive, restart</span>
+        <span class="c1"># test for high or low at beginning code pause</span>
+        <span class="n">label</span><span class="p">(</span><span class="s2">&quot;test_input_1&quot;</span><span class="p">)</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="n">pin</span><span class="p">,</span> <span class="s2">&quot;continue_decode_1&quot;</span><span class="p">)</span> <span class="c1"># if high, keep counting</span>
+        <span class="n">in_</span><span class="p">(</span><span class="n">pins</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="c1"># if low, a new burst arrived and a 0 should be stored</span>
+        <span class="n">label</span><span class="p">(</span><span class="s2">&quot;test_decode_start&quot;</span><span class="p">)</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="n">y_dec</span><span class="p">,</span> <span class="s2">&quot;decode_start&quot;</span><span class="p">)</span> <span class="c1"># start decode over for next bit</span>
+        <span class="c1"># continue if all 32 bits received</span>
+        <span class="n">push</span><span class="p">(</span><span class="n">noblock</span><span class="p">)</span> <span class="c1"># push the full 32-bit ISR to the RX FIFO</span>
+        <span class="n">wait</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">pin</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="c1"># wait for final burst to end, then restart(POSITION 3)</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="s2">&quot;restart&quot;</span><span class="p">)</span> <span class="c1"># restart after a successful decoding</span>
+        <span class="c1"># test for high or low to ensure expected burst arrives for next bit</span>
+        <span class="n">label</span><span class="p">(</span><span class="s2">&quot;test_input_2&quot;</span><span class="p">)</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="n">pin</span><span class="p">,</span> <span class="s2">&quot;continue_decode_2&quot;</span><span class="p">)</span> <span class="c1"># if high, keep counting</span>
+        <span class="c1"># if low, the expected burst arrived and there is no fault</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="s2">&quot;test_decode_start&quot;</span><span class="p">)</span> <span class="c1"># return to decrement bit counter</span>
+        <span class="c1"># test for high or low on start pause to ensure start condition is met</span>
+        <span class="n">label</span><span class="p">(</span><span class="s2">&quot;start_pause_test&quot;</span><span class="p">)</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="n">pin</span><span class="p">,</span> <span class="s2">&quot;start_pause&quot;</span><span class="p">)</span> <span class="c1"># if high, keep counting</span>
+        <span class="c1"># if low, repeat command detected</span>
+        <span class="n">mov</span><span class="p">(</span><span class="n">isr</span><span class="p">,</span> <span class="n">null</span><span class="p">)</span> <span class="c1"># move null into ISR to indicate a repeat command</span>
+        <span class="n">push</span><span class="p">(</span><span class="n">noblock</span><span class="p">)</span> <span class="c1"># push the null command to the RX FIFO</span>
+        <span class="n">wait</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">pin</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="c1"># wait for idle line (high) before restart (POSITION 4)</span>
+        <span class="n">jmp</span><span class="p">(</span><span class="s2">&quot;restart&quot;</span><span class="p">)</span> <span class="c1"># restart after a repeat command detected</span>
+
+    <span class="k">def</span> <span class="nf">_update_command</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the remote commands decoded by the state machine.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The for loop does two important things. First, it makes sure</span>
+<span class="sd">        there is a value ready to be retrieved using the .rx_fifo()</span>
+<span class="sd">        method. If you use the .get() method when the RX FIFO is empty,</span>
+<span class="sd">        the program is blocked while it waits for a value to return.</span>
+<span class="sd">        Second, the for loop clears out any old codes waiting in the</span>
+<span class="sd">        RX FIFO, which can hold up to four 32-bit words. If multiple</span>
+<span class="sd">        codes were received before a user checks for them, then a single</span>
+<span class="sd">        .get() call would only retrieve the oldest, stalest code. The</span>
+<span class="sd">        for loop tosses out the oldest codes and gets only the most</span>
+<span class="sd">        recent one. The raw code is also checked to determine if a</span>
+<span class="sd">        repeat command was received (null from state machine). Finally,</span>
+<span class="sd">        the elapsed_time variable is used to detemine if the repeat</span>
+<span class="sd">        attribute needs to be cleared by testing the time between start</span>
+<span class="sd">        pulses.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># purge out all old stale values from the RX FIFO</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ir_remote</span><span class="o">.</span><span class="n">rx_fifo</span><span class="p">()):</span>
+            <span class="c1"># get the raw 32-bit remote code</span>
+            <span class="n">raw_code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ir_remote</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="o">=</span> <span class="n">ticks_us</span><span class="p">()</span>
+            <span class="c1"># check for null code indicating repeat</span>
+            <span class="k">if</span> <span class="n">raw_code</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_repeat</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># save only 8-bit code in the command attribute</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_command</span> <span class="o">=</span> <span class="p">(</span><span class="n">raw_code</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0x00ff</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stale</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_repeat</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">return</span>
+        <span class="c1"># measure the time elapsed since the last code was received</span>
+        <span class="n">elapsed_time</span> <span class="o">=</span> <span class="n">ticks_diff</span><span class="p">(</span><span class="n">ticks_us</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span><span class="p">)</span>
+        <span class="c1"># check for conditions that end the repeat and clear the command</span>
+        <span class="k">if</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_repeat</span> <span class="ow">and</span> <span class="n">elapsed_time</span> <span class="o">&gt;</span> <span class="mi">120_000</span><span class="p">)</span> <span class="ow">or</span>
+            <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repeat</span> <span class="ow">and</span> <span class="n">elapsed_time</span> <span class="o">&gt;</span> <span class="mi">80_000</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_repeat</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_command</span> <span class="o">=</span> <span class="kc">None</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Turner Howard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
