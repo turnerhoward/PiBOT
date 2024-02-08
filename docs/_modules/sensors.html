@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>sensors &mdash; Physics 360 PiBOT 0.1 documentation</title>
+  <title>sensors &mdash; Physics 360 PiBOT 1.0 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -390,10 +390,22 @@
 <span class="sd">        Return</span>
 <span class="sd">        ------</span>
 <span class="sd">        float</span>
-<span class="sd">            The distance in cm from the lidar sensor to an object. The</span>
-<span class="sd">            maximum is 132 cm, which is also returned if the distance is</span>
-<span class="sd">            greater than 132 cm or the pulse width indicates no object</span>
-<span class="sd">            is in range.</span>
+<span class="sd">            The distance in cm from the center of the robot&#39;s wheelbase</span>
+<span class="sd">            (i.e., center of rotation) to an object. The maximum value</span>
+<span class="sd">            is determined by the sum of the constants LIDAR_MAX and</span>
+<span class="sd">            LIDAR_OFFSET (130.5 + 9.5 = 140 cm), which is also the</span>
+<span class="sd">            returned value if no object is in range.</span>
+
+<span class="sd">        Important</span>
+<span class="sd">        ---------</span>
+<span class="sd">        Note that the reading is returned as the distance from the</span>
+<span class="sd">        robot&#39;s center of rotation to the object! This is done so that</span>
+<span class="sd">        the reading corresponds to the radial distance when doing lidar</span>
+<span class="sd">        scans while rotating the robot.</span>
+<span class="sd">        </span>
+<span class="sd">        To avoid crashing into objects, the returned reading must be</span>
+<span class="sd">        reduced by at least the length from the center of the wheels to</span>
+<span class="sd">        the front of the robot, which is about 14.5 cm.</span>
 
 <span class="sd">        Notes</span>
 <span class="sd">        -----</span>
@@ -441,8 +453,10 @@
         <span class="k">if</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">distance</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="c1"># check for values out of range and no detection (pulse width = 2 ms)</span>
-        <span class="k">if</span> <span class="n">distance</span> <span class="o">&gt;</span> <span class="mi">132</span><span class="p">:</span>
-            <span class="n">distance</span> <span class="o">=</span> <span class="mi">132</span>
+        <span class="k">if</span> <span class="n">distance</span> <span class="o">&gt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">LIDAR_MAX</span><span class="p">:</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="n">cnst</span><span class="o">.</span><span class="n">LIDAR_MAX</span>
+        <span class="c1"># add offset of wheel base (i.e., report value from center of rotation)</span>
+        <span class="n">distance</span> <span class="o">+=</span> <span class="n">cnst</span><span class="o">.</span><span class="n">LIDAR_OFFSET</span>
         <span class="k">return</span> <span class="n">distance</span></div></div>
 
 
@@ -462,9 +476,17 @@
 <span class="sd">    accessible remote commands are updated frequently, an instance of</span>
 <span class="sd">    this class is passed as an argument when creating an instance of the</span>
 <span class="sd">    Control class. The control loop runs at an average of 10 ms cycles</span>
-<span class="sd">    on the second core of the RP2040. With this strategy, the user only</span>
-<span class="sd">    needs to use the three properties: command, stale, and repeat to</span>
-<span class="sd">    work with remote control commands.</span>
+<span class="sd">    on the second core of the RP2040. </span>
+<span class="sd">    </span>
+<span class="sd">    Whenever a remote control button is pressed and released, the</span>
+<span class="sd">    robot.remote.command property will return the new code for a short</span>
+<span class="sd">    time until it is automatically cleared, at which point the property</span>
+<span class="sd">    returns None. If the button is held down, the code value is retained</span>
+<span class="sd">    and the robot.remote.repeat property will return True until the</span>
+<span class="sd">    button is released and the code is returned to None. This timing can</span>
+<span class="sd">    be tricky when working with remote control commands in a program.</span>
+<span class="sd">    The examples provided below demonstate how to avoid timing problems</span>
+<span class="sd">    using the three properties: command, stale, and repeat.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -556,7 +578,9 @@
 <span class="sd">        &gt;&gt;&gt; print(&#39;Press a button on the remote control&#39;)</span>
 <span class="sd">        &gt;&gt;&gt; while True:</span>
 <span class="sd">        &gt;&gt;&gt;     if not robot.remote.stale:</span>
-<span class="sd">        &gt;&gt;&gt;         print(robot.remote.command)</span>
+<span class="sd">        &gt;&gt;&gt;         command = robot.remote.command</span>
+<span class="sd">        &gt;&gt;&gt;         if command is not None:</span>
+<span class="sd">        &gt;&gt;&gt;             print(command)</span>
 <span class="sd">        &gt;&gt;&gt;     time.sleep(.1)</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -717,7 +741,8 @@
         <span class="k">if</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_repeat</span> <span class="ow">and</span> <span class="n">elapsed_time</span> <span class="o">&gt;</span> <span class="mi">120_000</span><span class="p">)</span> <span class="ow">or</span>
             <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repeat</span> <span class="ow">and</span> <span class="n">elapsed_time</span> <span class="o">&gt;</span> <span class="mi">80_000</span><span class="p">)):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_repeat</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_command</span> <span class="o">=</span> <span class="kc">None</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_command</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stale</span> <span class="o">=</span> <span class="kc">False</span></div>
 </pre></div>
 
            </div>
@@ -727,7 +752,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2023, Turner Howard.</p>
+    <p>&#169; Copyright 2024, Turner Howard.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

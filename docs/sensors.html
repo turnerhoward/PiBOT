@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>sensors module &mdash; Physics 360 PiBOT 0.1 documentation</title>
+  <title>sensors module &mdash; Physics 360 PiBOT 1.0 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -267,15 +267,26 @@ A pulse width of 2 ms indicates no objects are in range.</p>
 <dd><p>Samples the pulse width of lidar sensor to measure distance.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The distance in cm from the lidar sensor to an object. The
-maximum is 132 cm, which is also returned if the distance is
-greater than 132 cm or the pulse width indicates no object
-is in range.</p>
+<dd class="field-odd"><p>The distance in cm from the center of the robot’s wheelbase
+(i.e., center of rotation) to an object. The maximum value
+is determined by the sum of the constants LIDAR_MAX and
+LIDAR_OFFSET (130.5 + 9.5 = 140 cm), which is also the
+returned value if no object is in range.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>float</p>
 </dd>
 </dl>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Note that the reading is returned as the distance from the
+robot’s center of rotation to the object! This is done so that
+the reading corresponds to the radial distance when doing lidar
+scans while rotating the robot.</p>
+<p>To avoid crashing into objects, the returned reading must be
+reduced by at least the length from the center of the wheels to
+the front of the robot, which is about 14.5 cm.</p>
+</div>
 <p class="rubric">Notes</p>
 <p>Averaging is possible by setting the constant SAMPLES_LIDAR to
 an integer greater than 1. The typical time required for a lidar
@@ -314,9 +325,16 @@ restarts and clears any partially received data. To ensure the user
 accessible remote commands are updated frequently, an instance of
 this class is passed as an argument when creating an instance of the
 Control class. The control loop runs at an average of 10 ms cycles
-on the second core of the RP2040. With this strategy, the user only
-needs to use the three properties: command, stale, and repeat to
-work with remote control commands.</p>
+on the second core of the RP2040.</p>
+<p>Whenever a remote control button is pressed and released, the
+robot.remote.command property will return the new code for a short
+time until it is automatically cleared, at which point the property
+returns None. If the button is held down, the code value is retained
+and the robot.remote.repeat property will return True until the
+button is released and the code is returned to None. This timing can
+be tricky when working with remote control commands in a program.
+The examples provided below demonstate how to avoid timing problems
+using the three properties: command, stale, and repeat.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="sensors.IrRemote.command">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">command</span></span><a class="headerlink" href="#sensors.IrRemote.command" title="Permalink to this definition"></a></dt>
@@ -381,7 +399,9 @@ and only once for each instance of a button press.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Press a button on the remote control&#39;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
 <span class="gp">&gt;&gt;&gt; </span>    <span class="k">if</span> <span class="ow">not</span> <span class="n">robot</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">stale</span><span class="p">:</span>
-<span class="gp">&gt;&gt;&gt; </span>        <span class="nb">print</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">command</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span>        <span class="n">command</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">command</span>
+<span class="gp">&gt;&gt;&gt; </span>        <span class="k">if</span> <span class="n">command</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<span class="gp">&gt;&gt;&gt; </span>            <span class="nb">print</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span>    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">.1</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -434,7 +454,7 @@ held down.</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2023, Turner Howard.</p>
+    <p>&#169; Copyright 2024, Turner Howard.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

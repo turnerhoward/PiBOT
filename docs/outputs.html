@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>outputs module &mdash; Physics 360 PiBOT 0.1 documentation</title>
+  <title>outputs module &mdash; Physics 360 PiBOT 1.0 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -86,13 +86,13 @@
 <p>Generates sound from built-in buzzer on MAKER-PI-RP2040 board.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="outputs.Buzzer.on">
-<span class="sig-name descname"><span class="pre">on</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/outputs.html#Buzzer.on"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#outputs.Buzzer.on" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">on</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/outputs.html#Buzzer.on"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#outputs.Buzzer.on" title="Permalink to this definition"></a></dt>
 <dd><p>Turns on the buzzer at desired frequency and volume.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>freq</strong> (<em>int</em><em>, </em><em>default=1000</em>) – Frequency of the tone generated. Minimum is 8 Hz.</p></li>
-<li><p><strong>level</strong> (<em>int</em><em>, </em><em>default=2</em>) – Volume of the buzzer with levels 1-5, 5 being the loudest.</p></li>
+<li><p><strong>level</strong> (<em>int</em><em>, </em><em>default=3</em>) – Volume of the buzzer with levels 1-5, 5 being the loudest.</p></li>
 </ul>
 </dd>
 </dl>
@@ -135,7 +135,7 @@ larger than 5000 ms.</p></li>
 <li><p><strong>bursts</strong> (<em>int</em><em>, </em><em>default=1</em>) – Number of pulses to sound. Duty cycle is 50% (i.e., off time
 is equal to on time. Use -1 to generate continuous pulses.</p></li>
 <li><p><strong>freq</strong> (<em>int</em><em>, </em><em>default=1000</em>) – Frequency of the tone generated. Minimum is 8 Hz.</p></li>
-<li><p><strong>level</strong> (<em>int</em><em>, </em><em>default=2</em>) – Volume of the buzzer with levels 1-5, 5 being the loudest.</p></li>
+<li><p><strong>level</strong> (<em>int</em><em>, </em><em>default=3</em>) – Volume of the buzzer with levels 1-5, 5 being the loudest.</p></li>
 </ul>
 </dd>
 </dl>
@@ -372,7 +372,7 @@ select your own color and brightness.</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2023, Turner Howard.</p>
+    <p>&#169; Copyright 2024, Turner Howard.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>pibot module &mdash; Physics 360 PiBOT 0.1 documentation</title>
+  <title>pibot module &mdash; Physics 360 PiBOT 1.0 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -86,7 +86,7 @@ robot. The PiBOT class contains attributes to track the robot position
 and heading, determine its current state, perform lidar scans of the
 surroundings, and work with the lidar data. The examples in the
 following section demonstrate how to use the PiBOT attributes. The
-motion, sensors, and outputs modules also contain many examples on how
+motion, sensors, and outputs modules also contain many examples of how
 to use their features from within an instance of the PiBOT class.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="pibot.PiBOT">
@@ -196,7 +196,7 @@ to use their features from within an instance of the PiBOT class.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="pibot.PiBOT.position">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">position</span></span><a class="headerlink" href="#pibot.PiBOT.position" title="Permalink to this definition"></a></dt>
-<dd><p>Gets or set the current position as a list of [x, y]
+<dd><p>Gets or sets the current position as a list of [x, y]
 coordinates.</p>
 <p class="rubric">Notes</p>
 <p>The global coordinate system is based on the position of the
@@ -223,10 +223,15 @@ path, and the y axis points to the left wheel.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="pibot.PiBOT.heading">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">heading</span></span><a class="headerlink" href="#pibot.PiBOT.heading" title="Permalink to this definition"></a></dt>
-<dd><p>Gets or set the current heading angle.</p>
+<dd><p>Gets or sets the current heading angle.</p>
 <p class="rubric">Notes</p>
 <p>The heading angle is measured in degrees from the x axis with
 positive values going counterclockwise.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>The heading value ranges from -180 to 180 degrees and changes
+sign if it crosses over the min/max value.</p>
+</div>
 <p class="rubric">Examples</p>
 <p>Create an instance of PiBOT.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
@@ -256,14 +261,21 @@ created. The clock is reset when the .reset() method is called.</p>
 <dt class="sig sig-object py" id="pibot.PiBOT.motion_state">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">motion_state</span></span><a class="headerlink" href="#pibot.PiBOT.motion_state" title="Permalink to this definition"></a></dt>
 <dd><p>Gets the current motion state of the robot.</p>
-<p>The motion states are: ‘stop’, ‘pause’, ‘linear’, ‘turn’, ‘arc’,
-and ‘steer’.</p>
+<p>The motion states are: ‘stop’, ‘pause’, ‘linear’, ‘rotate’,
+‘arc’, and ‘steer’.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pibot.PiBOT.moving">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">moving</span></span><a class="headerlink" href="#pibot.PiBOT.moving" title="Permalink to this definition"></a></dt>
+<dd><p>Determines is the robot is currently moving.</p>
+<p>Checks for motion states: ‘stop’ or ‘pause’.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="pibot.PiBOT.busy">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">busy</span></span><a class="headerlink" href="#pibot.PiBOT.busy" title="Permalink to this definition"></a></dt>
-<dd><p>Determines if the robot is busy executing motion commands.</p>
+<dd><p>Determines if the robot has protected or queued commands.</p>
 <p>The robot is considered busy if protected motion is being
 commanded or if commands are waiting in the queue.</p>
 </dd></dl>
@@ -276,14 +288,18 @@ commanded or if commands are waiting in the queue.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pibot.PiBOT.scan">
-<span class="sig-name descname"><span class="pre">scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">increment</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.scan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.scan" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">increment</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ang_speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">180</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.scan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.scan" title="Permalink to this definition"></a></dt>
 <dd><p>Sweeps the robot through an angle and stores lidar data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>angle</strong> (<em>int</em><em>, </em><em>float</em><em>, </em><em>maximum +/- 720</em>) – A value in degrees to rotate the robot for a scan sweep.</p></li>
-<li><p><strong>increment</strong> (<em>int</em><em>, </em><em>float</em><em>, </em><em>default=2.5</em>) – The interval in degrees at which to capture lidar data.</p></li>
-<li><p><strong>filename</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the file for saving the lidar data to a CSV.</p></li>
+<li><p><strong>angle</strong> (<em>int</em><em>, </em><em>float</em><em>, </em><em>maximum +/- 720</em>) – A value in degrees to rotate the robot for a scan sweep. A
+positive angle will rotate left (counterclockwise), while a
+negative value will rotate right (clockwise).</p></li>
+<li><p><strong>increment</strong> (<em>int</em><em>, </em><em>float</em><em>, </em><em>default=2.5</em>) – The interval in degrees at which to capture lidar data.
+Minimum is 1 degree.</p></li>
+<li><p><strong>ang_speed</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>default=cnst.ANG_SPD_MAX</em><em> (</em><em>180 deg/s</em><em>)</em>) – The desired angular speed. Range from 30 to 180 deg/s.</p></li>
+<li><p><strong>filename</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the file to save the lidar data to a CSV.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -297,28 +313,45 @@ attributes.</p>
 </dl>
 <p class="rubric">Notes</p>
 <p>The default angle increment of the lidar scan is set to 2.5
-degrees, which represents a good compromise between the speed
-and resolution during the turn motion. The actual angle stored
-in .lidar_angle varies because the data is collected dynamically
-while the robot turns. The lidar detects a field of view of
-about 10 degrees, meaning the data spaced at 2.5 degrees
-represents a higher resolution than the lidar can really discern
-and results in overlapping ranges of detection.</p>
+degrees, which represents a good compromise between speed and
+resolution when scanning at the default maximum angular speed.
+The actual angle stored in .lidar_angle varies because the data
+is collected dynamically while the robot rotates. The lidar
+detects a field of view of about 15 degrees, meaning the data
+spaced at 2.5 degrees represents a higher resolution than the
+lidar can really discern and results in overlapping ranges of
+detection. In practice, the lidar sensor is fairly accurate at
+measuring distances to objects that are large and flat, but for
+small objects that are near the end of its measuring range, the
+sensor will report larger values than expected, making the
+object appear further away than it really is. In some cases, an
+object can be missed entirely because the IR light from the
+sensor’s 15 degree beam width reflects from the background and
+overwhelms the light reflected from the small object in the
+foreground. The best approach for scanning small objects is to
+move close to them.</p>
 <p>The optional filename is used to save a CSV file to the RP2040’s
 memory, which can be accessed with Thonny and downloaded to the
 computer for analysis.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Remember that the lidar readings have an offset added so that
+the distances recorded are from the center of the robot’s
+wheel base. Therefore, the data in the lidar distance list of a
+scan represents the radius from the robot’s center of rotation.</p>
+</div>
 <p class="rubric">Examples</p>
 <p>Create an instance of PiBOT.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Command a 360 degree clockwise scan. The returned lists are
+<p>Command a 180 degree clockwise scan. The returned lists are
 stored in local variables as shown; however, it is not
 necessary to use the returned values because they can also
 be accessed directly with the .lidar_dist and .lidar_angle
 attributes.</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">180</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Command a 180 degree counterclockwise scan and store the data
@@ -354,11 +387,11 @@ fairly close to the desired step size.</p>
 <p>Finds the maximum value and corresponsing angle in scan data. If
 there is more than one identical maximum value, the first one in
 the list will be returned. If there are values that are out of
-range (i.e., 132 cm), the method finds the block of 132 cm
+range (i.e., 140 cm), the method finds the block of 140 cm
 values in the distance list that is longest and returns the
-angle near the center of the block. If there is only one 132 cm
+angle near the center of the block. If there is only one 140 cm
 value, that will be returned as the maximum. If there is more
-than one non-adjacent single 132 cm value, the first one in the
+than one non-adjacent single 140 cm value, the first one in the
 list will be returned as the maximum.</p>
 <p class="rubric">Examples</p>
 <p>Create an instance of PiBOT.</p>
@@ -366,26 +399,26 @@ list will be returned as the maximum.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Command a 360 degree clockwise scan and use the returned values
+<p>Command a 180 degree clockwise scan and use the returned values
 to find the maximum.</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">180</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">max_distance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">)</span>
-<span class="go">(-188.4522, 132)</span>
+<span class="go">(128.4522, 140.0)</span>
 </pre></div>
 </div>
 <p>The arguments can also be the lidar data taken directly from the
 PiBOT attributes instead of local copies used in the previous
 example.</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">180</span><span class="p">)</span>
 <span class="go">([0.0, -2.504347, -5.321739, -7.61739, -10.53913, -12.93913,...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">max_distance</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">lidar_angle</span><span class="p">,</span> <span class="n">robot</span><span class="o">.</span><span class="n">lidar_dist</span><span class="p">)</span>
 <span class="go">(-80.34782, 91.0)</span>
 </pre></div>
 </div>
 <p>The scan can also return its values directly to the max_distance
-method by using the unpacking operator (*) as shown.</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">max_distance</span><span class="p">(</span><span class="o">*</span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">))</span>
-<span class="go">(-78.78259, 90.0)</span>
+method using the unpacking operator (*) as shown.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">max_distance</span><span class="p">(</span><span class="o">*</span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">180</span><span class="p">))</span>
+<span class="go">(-78.78259, 103.5)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -418,46 +451,45 @@ the list will be returned.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Command a 360 degree clockwise scan and use the returned values
+<p>Command a 180 degree clockwise scan and use the returned values
 to find the minimum.</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">180</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">min_distance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">)</span>
-<span class="go">(-272.974, 18.2)</span>
+<span class="go">(72.974, 18.2)</span>
 </pre></div>
 </div>
 <p>The arguments can also be the lidar data taken directly from the
 PiBOT attributes instead of local copies used in the previous
 example.</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">180</span><span class="p">)</span>
 <span class="go">([0.0, -2.713043, -5.634782, -7.721738, -10.22609, -12.83478,...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">min_distance</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">lidar_angle</span><span class="p">,</span> <span class="n">robot</span><span class="o">.</span><span class="n">lidar_dist</span><span class="p">)</span>
 <span class="go">(-120.0, 13.8)</span>
 </pre></div>
 </div>
 <p>The scan can also return its values directly to the min_distance
-method by using the unpacking operator (*) as shown.</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">min_distance</span><span class="p">(</span><span class="o">*</span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">))</span>
-<span class="go">(-279.9652, 19.6)</span>
+method using the unpacking operator (*) as shown.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">min_distance</span><span class="p">(</span><span class="o">*</span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">180</span><span class="p">))</span>
+<span class="go">(-179.9652, 19.6)</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pibot.PiBOT.detect_objects">
-<span class="sig-name descname"><span class="pre">detect_objects</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.detect_objects"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.detect_objects" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">detect_objects</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.detect_objects"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.detect_objects" title="Permalink to this definition"></a></dt>
 <dd><p>Attempts to detect one or more objects in the foreground.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>angle</strong> (<em>list</em>) – The lidar angle data</p></li>
 <li><p><strong>distance</strong> (<em>list</em>) – The lidar distance data</p></li>
-<li><p><strong>threshold</strong> (<em>int</em><em>, </em><em>float</em><em>, </em><em>default=10</em>) – Minimum step size in cm between adjacent lidar distance
-values to indicate an edge is present.</p></li>
+<li><p><strong>max_size</strong> (<em>int</em><em>, </em><em>float</em><em>, </em><em>default=50</em>) – Maximum width of an object in cm to detect.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A triplet of lists comprising the approximate heading angles
-in degrees to the center of the objects, the average
+in degrees to the center of the objects, the minimum
 distances in cm to the objects, and their approximate widths
 in cm.</p>
 </dd>
@@ -466,38 +498,62 @@ in cm.</p>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
-<p>Attempts to find objects in the foreground by calculating the
-difference between adjacent lidar distance values to detemine
-if there is a step larger than a threshold value. The step
-represents an edge between a near and distant object. If both a
-step from far to near and then a corresponding step from near to
-far are detected, an object is recorded. The center angle,
-average distance, and approximate width of the object are stored
-in the corresponsing lists. After finding the first object,
-detection continues until reaching the end of the data list. If
-the object is too far away or too narrow, it may not be
+<p>Attempts to find objects in the foreground of lidar scan data by
+detecting sharp changes in distance readings that represent
+possible leading and trailing edges of an object. If both a
+sharp decrease in distance (i.e., a step from far to near
+representing a leading edge) and then a corresponding sharp
+increase (i.e., a step from near to far representing a trailing
+edge) are detected, an object is recorded.</p>
+<p>The algorithm first calculates the derivative of the distance
+with respect to angle to find points where the distance is
+changing most rapidly. The negative and positive peaks of the
+derivative data are recorded as possible leading and trailing
+edges. Then the peaks are filtered to ensure they meet a minimum
+threshold and that the derivative of the three points preceeding
+or following the peak is fairly flat in comparision. The intent
+of this simple filtering strategy is to find only the peaks
+where a rapid change is occurring. Finally, the potential
+leading and trailing edges are tested in sequence to determine
+if there are pairs of first a leading and then a trailing edge.
+From all pairs found, the edges are used to calculate the center
+angle, minimum distance, and approximate width of each object,
+which are stored in the corresponsing list. If no objects are
+found, empty lists are returned.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>If an object is too far away or too narrow, it may not be
 detected. It’s also possible that this method will return data
-for an object that doesn’t really exist. Adjusting the threshold
-value could help fine tune the performance.</p>
+for an object that doesn’t really exist. The returned values are
+less accurate when the object is farther from the robot because
+of the 15 degree spread of the lidar beam. For better accuracy,
+move closer to the object and rescan. The estimated distance and
+width assumes the object has a flat face oriented perpendicular
+to the axis of the robot. For irregular objects or objects
+scanned at a glancing angle, the width and distance data will be
+less accurate. The accuracy of the center angle depends on the
+edge-finding algorithm, the distance of the object, and the
+angle increment (i.e., step size) in the lidar data.</p>
+</div>
 <p class="rubric">Example</p>
 <p>Create an instance of PiBOT.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Command a 360 degree clockwise scan and use the returned values
-to detect objects. In this case the unpacking operator is used
-to pass the angle and distance lists returned from the scan
+<p>Command a 120 degree counterclockwise scan and use the returned
+values to detect objects. In this case the unpacking operator is
+used to pass the angle and distance lists returned from the scan
 directly into the .detect_objects() method. The returned object
 lists are stored as local variables as shown. In this example
-three objects are detected.</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">obj_angle</span><span class="p">,</span> <span class="n">obj_dist</span><span class="p">,</span> <span class="n">obj_width</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">detect_objects</span><span class="p">(</span><span class="o">*</span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">-</span><span class="mi">360</span><span class="p">))</span>
+two objects are detected.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">obj_angle</span><span class="p">,</span> <span class="n">obj_dist</span><span class="p">,</span> <span class="n">obj_width</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">detect_objects</span><span class="p">(</span><span class="o">*</span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="mi">120</span><span class="p">,</span> <span class="n">ang_speed</span><span class="o">=</span><span class="mi">120</span><span class="p">))</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">obj_angle</span>
-<span class="go">[-119.113, -192.1043, -253.1478]</span>
+<span class="go">[42.69345, 83.32172]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">obj_dist</span>
-<span class="go">[35.8, 64.3, 23.9]</span>
+<span class="go">[35.8, 44.3]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">obj_width</span>
-<span class="go">[37.8, 10.3, 36.0]</span>
+<span class="go">[12.6, 31.8]</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -517,7 +573,7 @@ three objects are detected.</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2023, Turner Howard.</p>
+    <p>&#169; Copyright 2024, Turner Howard.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
