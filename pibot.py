@@ -12,7 +12,7 @@ to use their features from within an instance of the PiBOT class.
 """
 
 import constants as cnst
-from math import pi, sin, radians
+from math import pi, tan, radians
 from utime import sleep_ms
 from control import Control
 from motion import Motion
@@ -342,56 +342,47 @@ class PiBOT:
         i = 0
         # get the starting heading angle
         start_angle = self.heading
+        # ensure the starting angle is positive
+        if start_angle < 0:
+            start_angle += 360
+        # adjust the start angle for negative scan angle
+        if angle < 0:
+            start_angle += abs(angle)
         # clear lidar data before a new scan
         self.lidar_dist.clear()
         self.lidar_angle.clear()
         # start protected rotation at the specified angle and direction
         if angle > 0:
-            if start_angle < 0:
-                start_angle += 360
             self.move.rotate_left(angle, ang_speed, protect=True)
-        else:
-            if start_angle > 0:
-                start_angle -= 360
+        elif angle < 0:
             self.move.rotate_right(-angle, ang_speed, protect=True)
         # wait for rotation to start before collecting data
         while self._control._motion_state != 'rotate':
             continue
         # while rotation is active, collect data at the approximate increment
-        while self._control._motion_state == 'rotate':
-            # for positive rotation, adjust for +/-180 crossover
-            if angle > 0:
-                # ensure current heading is always positive
-                if self.heading < 0:
-                    current_heading = self.heading + 360
-                else:
-                    current_heading = self.heading
-                # increment desired angle and ensure it doesn't exceed 360
-                desired_heading = start_angle + increment*i
-                if desired_heading > 360:
-                    desired_heading -= 360
-                # store data when the current heading reaches the desired
-                if current_heading >= desired_heading:
-                    self.lidar_dist.append(self.lidar.read())
-                    self.lidar_angle.append(self.heading)
-                    i += 1
-            # for negative rotation, adjust for +/-180 crossover
-            elif angle < 0:
-                # ensure current heading is always negative
-                if self.heading > 0:
-                    current_heading = self.heading - 360
-                else:
-                    current_heading = self.heading
-                # decrement desired angle and ensure it doesn't exceed -360
-                desired_heading = start_angle - increment*i
-                if desired_heading < -360:
-                    desired_heading += 360
-                # store data when the current heading reaches the desired
-                if current_heading <= desired_heading:
-                    self.lidar_dist.append(self.lidar.read())
-                    self.lidar_angle.append(self.heading)
-                    i += 1
-        # add one more data point at the end of rotation for settling time
+        while (self._control._motion_state == 'rotate'
+               and abs(increment*i) <= abs(angle)):
+            # adjust the desired angle for the next increment
+            desired_heading = start_angle + increment*i
+            # calculate the number of wraps to add to the heading angle
+            wraps = desired_heading//360
+            # get the current heading angle
+            current_heading = self.heading
+            # ensure the current heading angle is positive
+            if current_heading < 0:
+                current_heading += 360
+            # add the necessary wraps to the current heading angle
+            current_heading += 360*wraps
+            # store data when the current heading reaches the desired heading
+            if angle > 0 and current_heading > desired_heading:
+                self.lidar_dist.append(self.lidar.read())
+                self.lidar_angle.append(self.heading)
+                i += 1
+            elif angle < 0 and current_heading < desired_heading:
+                self.lidar_dist.append(self.lidar.read())
+                self.lidar_angle.append(self.heading)
+                i -= 1
+        # add one more data point at the end of rotation after settling
         self.lidar_dist.append(self.lidar.read())
         self.lidar_angle.append(self.heading)
         # create a CSV (comma-separated values) file and write lidar data
@@ -710,6 +701,9 @@ class PiBOT:
                             center_angle -= 360
                     included_angle = abs(trailing_edge_angle
                                          - leading_edge_angle)
+                    # exclude any included angles greater that resonable max
+                    if included_angle > 150:
+                        break
                     # adjust for beam width
                     if included_angle > BEAM_ANGLE:
                         included_angle = included_angle - BEAM_ANGLE
@@ -720,7 +714,7 @@ class PiBOT:
                                                             :trailing_edge]))
                     min_distance = distance[min_index]
                     # calculate approximate object width
-                    width = min_distance * sin(radians(included_angle))
+                    width = 2 * (min_distance * tan(radians(included_angle/2)))
                     # ensure object width doesn't exceed max_width and append
                     if width <= max_size:
                         # add object data to the corresponding lists
