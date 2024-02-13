@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pibot &mdash; Physics 360 PiBOT 1.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Physics 360 PiBOT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">lib</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Physics 360 PiBOT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pibot</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pibot</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">This module contains the PiBOT class that incorporates the control,</span>
+<span class="sd">motion, sensors, and outputs modules to create a fully functioning</span>
+<span class="sd">robot. The PiBOT class contains attributes to track the robot position</span>
+<span class="sd">and heading, determine its current state, perform lidar scans of the</span>
+<span class="sd">surroundings, and work with the lidar data. The examples in the</span>
+<span class="sd">following section demonstrate how to use the PiBOT attributes. The</span>
+<span class="sd">motion, sensors, and outputs modules also contain many examples of how</span>
+<span class="sd">to use their features from within an instance of the PiBOT class.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">constants</span> <span class="k">as</span> <span class="nn">cnst</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">pi</span><span class="p">,</span> <span class="n">tan</span><span class="p">,</span> <span class="n">radians</span>
+<span class="kn">from</span> <span class="nn">utime</span> <span class="kn">import</span> <span class="n">sleep_ms</span>
+<span class="kn">from</span> <span class="nn">control</span> <span class="kn">import</span> <span class="n">Control</span>
+<span class="kn">from</span> <span class="nn">motion</span> <span class="kn">import</span> <span class="n">Motion</span>
+<span class="kn">from</span> <span class="nn">sensors</span> <span class="kn">import</span> <span class="n">Whiskers</span><span class="p">,</span> <span class="n">IrSensors</span><span class="p">,</span> <span class="n">LidarSensor</span><span class="p">,</span> <span class="n">IrRemote</span>
+<span class="kn">from</span> <span class="nn">outputs</span> <span class="kn">import</span> <span class="n">Buzzer</span><span class="p">,</span> <span class="n">LEDs</span>
+
+
+<div class="viewcode-block" id="PiBOT"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT">[docs]</a><span class="k">class</span> <span class="nc">PiBOT</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a top-level robot object to operate the PiBOT.</span>
+
+<span class="sd">    ...</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    whiskers : Whiskers object</span>
+<span class="sd">        Checks for left or right whisker contact.</span>
+<span class="sd">    ir : IrSensors object</span>
+<span class="sd">        Checks for left or right IR sensor detection.</span>
+<span class="sd">    lidar : LidarSensor object</span>
+<span class="sd">        Gets the current distance reading from the lidar sensor.</span>
+<span class="sd">    remote : IrRemote object</span>
+<span class="sd">        Gets commands from the IR remote control.</span>
+<span class="sd">    leds : LEDs object</span>
+<span class="sd">        Controls the left and right neopixel LEDs.</span>
+<span class="sd">    buzzer : Buzzer object</span>
+<span class="sd">        Controls the buzzer sound output.</span>
+<span class="sd">    move : Motion object</span>
+<span class="sd">        Controls the robot motion.</span>
+<span class="sd">    lidar_dist : list</span>
+<span class="sd">        The lidar distance values stored when scanning.</span>
+<span class="sd">    lidar_angle : list</span>
+<span class="sd">        The headings (angle values) when scanning with lidar.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates robot control attributes.&quot;&quot;&quot;</span>
+
+        <span class="c1"># OBJECTS NEEDED TO CREATE ROBOT</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">whiskers</span> <span class="o">=</span> <span class="n">Whiskers</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ir</span> <span class="o">=</span> <span class="n">IrSensors</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lidar</span> <span class="o">=</span> <span class="n">LidarSensor</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remote</span> <span class="o">=</span> <span class="n">IrRemote</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">leds</span> <span class="o">=</span> <span class="n">LEDs</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buzzer</span> <span class="o">=</span> <span class="n">Buzzer</span><span class="p">()</span>
+        <span class="c1"># pass objects into the _control object to allow access to attributes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_control</span> <span class="o">=</span> <span class="n">Control</span><span class="p">(</span><span class="n">leds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">leds</span><span class="p">,</span> <span class="n">buzzer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">buzzer</span><span class="p">,</span>
+                                <span class="n">remote</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">remote</span><span class="p">)</span>
+        <span class="c1"># pass _control object into move for access to contol attributes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">move</span> <span class="o">=</span> <span class="n">Motion</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="p">)</span>
+        <span class="c1"># ATTRIBUTES FOR LIDAR SCAN</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lidar_dist</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">position</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets or sets the current position as a list of [x, y]</span>
+<span class="sd">        coordinates.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The global coordinate system is based on the position of the</span>
+<span class="sd">        centerpoint between the robot&#39;s wheels when motion is first</span>
+<span class="sd">        started or after resetting. The x axis points forward along the</span>
+<span class="sd">        path, and the y axis points to the left wheel.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Get the position.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.position</span>
+<span class="sd">        [0, 0]</span>
+
+<span class="sd">        Set the position.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.position = [7.07, -7.07]</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># wait to avoid getting new value while _tracking() method is active</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_tracking_lock</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="c1"># return a static copy of the list instead of the list object itself</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_position</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="nd">@position</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c1"># check for valid argument</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: position must be a list in the form [x, y]&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: position must be a list of [x, y] values&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: x and y must be numeric values&#39;</span><span class="p">)</span>
+        <span class="c1"># wait to avoid setting new value while _tracking() method is active</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_tracking_lock</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_position</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">heading</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets or sets the current heading angle.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The heading angle is measured in degrees from the x axis with</span>
+<span class="sd">        positive values going counterclockwise.</span>
+
+<span class="sd">        Important</span>
+<span class="sd">        ---------</span>
+<span class="sd">        The heading value ranges from -180 to 180 degrees and changes</span>
+<span class="sd">        sign if it crosses over the min/max value.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Get the heading.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.heading</span>
+<span class="sd">        89.54</span>
+
+<span class="sd">        Set the heading.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.heading = 180</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># wait to avoid getting new value while _tracking() method is active</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_tracking_lock</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_heading</span> <span class="o">*</span> <span class="p">(</span><span class="mi">180</span><span class="o">/</span><span class="n">pi</span><span class="p">)</span>
+
+    <span class="nd">@heading</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">heading</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c1"># check for valid argument</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: heading must be a numeric value in degrees&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">180</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">180</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: heading must be in the range +/-180 degrees&#39;</span><span class="p">)</span>
+        <span class="c1"># wait to avoid setting new value while _tracking() method is active</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_tracking_lock</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_heading</span> <span class="o">=</span> <span class="n">value</span> <span class="o">*</span> <span class="p">(</span><span class="n">pi</span><span class="o">/</span><span class="mi">180</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">current_time</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the current time in seconds as a read-only value.</span>
+
+<span class="sd">        This is the time since an instance of the PiBOT class was</span>
+<span class="sd">        created. The clock is reset when the .reset() method is called.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_t_current</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">motion_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gets the current motion state of the robot.</span>
+
+<span class="sd">        The motion states are: &#39;stop&#39;, &#39;pause&#39;, &#39;linear&#39;, &#39;rotate&#39;,</span>
+<span class="sd">        &#39;arc&#39;, and &#39;steer&#39;.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_motion_state</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">moving</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines is the robot is currently moving.</span>
+
+<span class="sd">        Checks for motion states: &#39;stop&#39; or &#39;pause&#39;.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">motion_state</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="s1">&#39;pause&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">busy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines if the robot has protected or queued commands.</span>
+
+<span class="sd">        The robot is considered busy if protected motion is being</span>
+<span class="sd">        commanded or if commands are waiting in the queue.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_protect</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_motion_queue</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="PiBOT.reset"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stops motion, exits thread, and reinitializes attributes.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+        <span class="n">sleep_ms</span><span class="p">(</span><span class="mi">15</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_thread_running</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># wait for thread to exit before reinitializing and starting new thread</span>
+        <span class="n">sleep_ms</span><span class="p">(</span><span class="mi">25</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">leds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">leds</span><span class="p">,</span> <span class="n">buzzer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">buzzer</span><span class="p">,</span>
+                               <span class="n">remote</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">remote</span><span class="p">)</span>
+        <span class="c1"># pause to allow new thread to take effect before handling new commands</span>
+        <span class="n">sleep_ms</span><span class="p">(</span><span class="mi">25</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="PiBOT.scan"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.scan">[docs]</a>    <span class="k">def</span> <span class="nf">scan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">increment</span><span class="o">=</span><span class="mf">2.5</span><span class="p">,</span> <span class="n">ang_speed</span><span class="o">=</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MAX</span><span class="p">,</span>
+             <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sweeps the robot through an angle and stores lidar data.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : int, float, maximum +/- 720</span>
+<span class="sd">            A value in degrees to rotate the robot for a scan sweep. A</span>
+<span class="sd">            positive angle will rotate left (counterclockwise), while a</span>
+<span class="sd">            negative value will rotate right (clockwise).</span>
+<span class="sd">        increment : int, float, default=2.5</span>
+<span class="sd">            The interval in degrees at which to capture lidar data.</span>
+<span class="sd">            Minimum is 1 degree.</span>
+<span class="sd">        ang_speed : int or float, default=cnst.ANG_SPD_MAX (180 deg/s)</span>
+<span class="sd">            The desired angular speed. Range from 30 to 180 deg/s.</span>
+<span class="sd">        filename : str, optional</span>
+<span class="sd">            Name of the file to save the lidar data to a CSV.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        2-tuple of lists</span>
+<span class="sd">            The corresponding angle and distance values, which can</span>
+<span class="sd">            also be accessed through the .lidar_angle and .lidar_dist</span>
+<span class="sd">            attributes.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The default angle increment of the lidar scan is set to 2.5</span>
+<span class="sd">        degrees, which represents a good compromise between speed and</span>
+<span class="sd">        resolution when scanning at the default maximum angular speed.</span>
+<span class="sd">        The actual angle stored in .lidar_angle varies because the data</span>
+<span class="sd">        is collected dynamically while the robot rotates. The lidar</span>
+<span class="sd">        detects a field of view of about 15 degrees, meaning the data</span>
+<span class="sd">        spaced at 2.5 degrees represents a higher resolution than the</span>
+<span class="sd">        lidar can really discern and results in overlapping ranges of</span>
+<span class="sd">        detection. In practice, the lidar sensor is fairly accurate at</span>
+<span class="sd">        measuring distances to objects that are large and flat, but for</span>
+<span class="sd">        small objects that are near the end of its measuring range, the</span>
+<span class="sd">        sensor will report larger values than expected, making the</span>
+<span class="sd">        object appear further away than it really is. In some cases, an</span>
+<span class="sd">        object can be missed entirely because the IR light from the</span>
+<span class="sd">        sensor&#39;s 15 degree beam width reflects from the background and</span>
+<span class="sd">        overwhelms the light reflected from the small object in the</span>
+<span class="sd">        foreground. The best approach for scanning small objects is to</span>
+<span class="sd">        move close to them.</span>
+
+<span class="sd">        The optional filename is used to save a CSV file to the RP2040&#39;s</span>
+<span class="sd">        memory, which can be accessed with Thonny and downloaded to the</span>
+<span class="sd">        computer for analysis.</span>
+
+<span class="sd">        Important</span>
+<span class="sd">        ---------</span>
+<span class="sd">        Remember that the lidar readings have an offset added so that</span>
+<span class="sd">        the distances recorded are from the center of the robot&#39;s</span>
+<span class="sd">        wheel base. Therefore, the data in the lidar distance list of a</span>
+<span class="sd">        scan represents the radius from the robot&#39;s center of rotation.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Command a 180 degree clockwise scan. The returned lists are</span>
+<span class="sd">        stored in local variables as shown; however, it is not</span>
+<span class="sd">        necessary to use the returned values because they can also</span>
+<span class="sd">        be accessed directly with the .lidar_dist and .lidar_angle</span>
+<span class="sd">        attributes.</span>
+
+<span class="sd">        &gt;&gt;&gt; angle, distance = robot.scan(-180)</span>
+
+<span class="sd">        Command a 180 degree counterclockwise scan and store the data</span>
+<span class="sd">        to a file called &#39;test_data&#39;. The data is not saved to local</span>
+<span class="sd">        variables. In the output, it is clear that the default angle</span>
+<span class="sd">        increment of 2.5 degrees cannot be followed exactly but tracks</span>
+<span class="sd">        fairly close to the desired step size.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.scan(180, filename=&#39;test_data&#39;)</span>
+<span class="sd">        ([0.0, 2.713043, 6.052173, 8.869564, 10.01739, 12.52174,...</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid argument</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="ow">or</span> <span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ANG_MAX</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: maximum magnitude of angle is &#39;</span>
+                         <span class="o">+</span><span class="s1">&#39;+/-</span><span class="si">%d</span><span class="s1"> degrees&#39;</span> <span class="o">%</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_MAX</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">angle</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle cannot be zero&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">increment</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: increment must be a numeric value&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">increment</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: minimum increment is 1 degree&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">increment</span> <span class="o">&gt;</span> <span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: increment must be less than scan angle&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ang_speed</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: ang_speed must be a numeric value&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ang_speed</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: ang_speed must be positive&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ang_speed</span> <span class="o">&gt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MAX</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: maximum ang_speed is: &#39;</span>
+                         <span class="o">+</span><span class="s1">&#39;</span><span class="si">%.2f</span><span class="s1"> deg/s&#39;</span> <span class="o">%</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MAX</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ang_speed</span> <span class="o">&lt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MIN</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: minimum ang_speed is: &#39;</span>
+                         <span class="o">+</span><span class="s1">&#39;</span><span class="si">%.2f</span><span class="s1"> deg/s&#39;</span> <span class="o">%</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MIN</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: filename must be a string&#39;</span><span class="p">)</span>
+        <span class="c1"># create an angle increment counter</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># get the starting heading angle</span>
+        <span class="n">start_angle</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span>
+        <span class="c1"># ensure the starting angle is positive</span>
+        <span class="k">if</span> <span class="n">start_angle</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">start_angle</span> <span class="o">+=</span> <span class="mi">360</span>
+        <span class="c1"># adjust the start angle for negative scan angle</span>
+        <span class="k">if</span> <span class="n">angle</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">start_angle</span> <span class="o">+=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+        <span class="c1"># clear lidar data before a new scan</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lidar_dist</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="c1"># start protected rotation at the specified angle and direction</span>
+        <span class="k">if</span> <span class="n">angle</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">rotate_left</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">ang_speed</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">angle</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">rotate_right</span><span class="p">(</span><span class="o">-</span><span class="n">angle</span><span class="p">,</span> <span class="n">ang_speed</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># wait for rotation to start before collecting data</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_motion_state</span> <span class="o">!=</span> <span class="s1">&#39;rotate&#39;</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="c1"># while rotation is active, collect data at the approximate increment</span>
+        <span class="k">while</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">_motion_state</span> <span class="o">==</span> <span class="s1">&#39;rotate&#39;</span>
+               <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">increment</span><span class="o">*</span><span class="n">i</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">)):</span>
+            <span class="c1"># adjust the desired angle for the next increment</span>
+            <span class="n">desired_heading</span> <span class="o">=</span> <span class="n">start_angle</span> <span class="o">+</span> <span class="n">increment</span><span class="o">*</span><span class="n">i</span>
+            <span class="c1"># calculate the number of wraps to add to the heading angle</span>
+            <span class="n">wraps</span> <span class="o">=</span> <span class="n">desired_heading</span><span class="o">//</span><span class="mi">360</span>
+            <span class="c1"># get the current heading angle</span>
+            <span class="n">current_heading</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">heading</span>
+            <span class="c1"># ensure the current heading angle is positive</span>
+            <span class="k">if</span> <span class="n">current_heading</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">current_heading</span> <span class="o">+=</span> <span class="mi">360</span>
+            <span class="c1"># add the necessary wraps to the current heading angle</span>
+            <span class="n">current_heading</span> <span class="o">+=</span> <span class="mi">360</span><span class="o">*</span><span class="n">wraps</span>
+            <span class="c1"># store data when the current heading reaches the desired heading</span>
+            <span class="k">if</span> <span class="n">angle</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">current_heading</span> <span class="o">&gt;</span> <span class="n">desired_heading</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lidar_dist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lidar</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="p">)</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">elif</span> <span class="n">angle</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">current_heading</span> <span class="o">&lt;</span> <span class="n">desired_heading</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lidar_dist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lidar</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="p">)</span>
+                <span class="n">i</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="c1"># add one more data point at the end of rotation after settling</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lidar_dist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lidar</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">heading</span><span class="p">)</span>
+        <span class="c1"># create a CSV (comma-separated values) file and write lidar data</span>
+        <span class="k">if</span> <span class="n">filename</span><span class="p">:</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s1">.csv&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+            <span class="c1"># add a file header</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;angle (degrees), distance (cm)</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="c1"># write each line of data</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span><span class="p">)):</span>
+                <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">lidar_dist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lidar_angle</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lidar_dist</span></div>
+
+<div class="viewcode-block" id="PiBOT.max_distance"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.max_distance">[docs]</a>    <span class="k">def</span> <span class="nf">max_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finds the maximum value in the lidar scan data.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : list</span>
+<span class="sd">            The lidar angle data</span>
+<span class="sd">        distance : list</span>
+<span class="sd">            The lidar distance data</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        2-tuple</span>
+<span class="sd">            A pair comprising the heading angle and maximum distance.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+
+<span class="sd">        Finds the maximum value and corresponsing angle in scan data. If</span>
+<span class="sd">        there is more than one identical maximum value, the first one in</span>
+<span class="sd">        the list will be returned. If there are values that are out of</span>
+<span class="sd">        range (i.e., 140 cm), the method finds the block of 140 cm</span>
+<span class="sd">        values in the distance list that is longest and returns the</span>
+<span class="sd">        angle near the center of the block. If there is only one 140 cm</span>
+<span class="sd">        value, that will be returned as the maximum. If there is more</span>
+<span class="sd">        than one non-adjacent single 140 cm value, the first one in the</span>
+<span class="sd">        list will be returned as the maximum.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Command a 180 degree clockwise scan and use the returned values</span>
+<span class="sd">        to find the maximum.</span>
+
+<span class="sd">        &gt;&gt;&gt; angle, distance = robot.scan(-180)</span>
+<span class="sd">        &gt;&gt;&gt; robot.max_distance(angle, distance)</span>
+<span class="sd">        (128.4522, 140.0)</span>
+
+<span class="sd">        The arguments can also be the lidar data taken directly from the</span>
+<span class="sd">        PiBOT attributes instead of local copies used in the previous</span>
+<span class="sd">        example.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.scan(-180)</span>
+<span class="sd">        ([0.0, -2.504347, -5.321739, -7.61739, -10.53913, -12.93913,...</span>
+<span class="sd">        &gt;&gt;&gt; robot.max_distance(robot.lidar_angle, robot.lidar_dist)</span>
+<span class="sd">        (-80.34782, 91.0)</span>
+
+<span class="sd">        The scan can also return its values directly to the max_distance</span>
+<span class="sd">        method using the unpacking operator (*) as shown.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.max_distance(*robot.scan(-180))</span>
+<span class="sd">        (-78.78259, 103.5)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle must be a list&#39;</span>
+                         <span class="o">+</span> <span class="s1">&#39; with at least 3 elements&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">angle</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle values must be numeric&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance must be a list&#39;</span>
+                         <span class="o">+</span> <span class="s1">&#39; with at least 3 elements&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">distance</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance values must be numeric&#39;</span><span class="p">)</span>
+        <span class="c1"># create count variables for out-of-range values</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">max_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">out_of_range</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># create list of all out-of-range values in lidar data (i.e., 140 cm)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">distance</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="mi">140</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">out_of_range</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">distance</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="mi">140</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">out_of_range</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">distance</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="mi">140</span><span class="p">,</span> <span class="n">out_of_range</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="c1"># find center of largest patch of out-of-range values</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">out_of_range</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">out_of_range</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">out_of_range</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">out_of_range</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]:</span>
+                    <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="n">max_count</span><span class="p">:</span>
+                        <span class="n">max_count</span> <span class="o">=</span> <span class="n">count</span>
+                        <span class="n">center</span> <span class="o">=</span> <span class="n">out_of_range</span><span class="p">[(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">-</span><span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="o">/</span><span class="mi">2</span><span class="p">)]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">max_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">center</span> <span class="o">=</span> <span class="n">out_of_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">angle</span><span class="p">[</span><span class="n">center</span><span class="p">],</span> <span class="n">distance</span><span class="p">[</span><span class="n">center</span><span class="p">]</span>
+        <span class="c1"># if there are no values out of range, return the maximum of the list</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">max_index</span> <span class="o">=</span> <span class="n">distance</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">distance</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">angle</span><span class="p">[</span><span class="n">max_index</span><span class="p">],</span> <span class="n">distance</span><span class="p">[</span><span class="n">max_index</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="PiBOT.min_distance"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.min_distance">[docs]</a>    <span class="k">def</span> <span class="nf">min_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finds the minimum value in the lidar scan data.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : list</span>
+<span class="sd">            The lidar angle data</span>
+<span class="sd">        distance : list</span>
+<span class="sd">            The lidar distance data</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        2-tuple</span>
+<span class="sd">            A pair comprising the heading angle and minimum distance.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Finds the minimum value and corresponsing angle in scan data. If</span>
+<span class="sd">        there is more than one identical minimum value, the first one in</span>
+<span class="sd">        the list will be returned.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Command a 180 degree clockwise scan and use the returned values</span>
+<span class="sd">        to find the minimum.</span>
+
+<span class="sd">        &gt;&gt;&gt; angle, distance = robot.scan(-180)</span>
+<span class="sd">        &gt;&gt;&gt; robot.min_distance(angle, distance)</span>
+<span class="sd">        (72.974, 18.2)</span>
+
+<span class="sd">        The arguments can also be the lidar data taken directly from the</span>
+<span class="sd">        PiBOT attributes instead of local copies used in the previous</span>
+<span class="sd">        example.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.scan(-180)</span>
+<span class="sd">        ([0.0, -2.713043, -5.634782, -7.721738, -10.22609, -12.83478,...</span>
+<span class="sd">        &gt;&gt;&gt; robot.min_distance(robot.lidar_angle, robot.lidar_dist)</span>
+<span class="sd">        (-120.0, 13.8)</span>
+
+<span class="sd">        The scan can also return its values directly to the min_distance</span>
+<span class="sd">        method using the unpacking operator (*) as shown.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.min_distance(*robot.scan(-180))</span>
+<span class="sd">        (-179.9652, 19.6)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle must be a list&#39;</span>
+                         <span class="o">+</span> <span class="s1">&#39; with at least 3 elements&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">angle</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle values must be numeric&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance must be a list&#39;</span>
+                         <span class="o">+</span> <span class="s1">&#39; with at least 3 elements&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">distance</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance values must be numeric&#39;</span><span class="p">)</span>
+        <span class="c1"># find index of minimum value in distance list</span>
+        <span class="n">min_index</span> <span class="o">=</span> <span class="n">distance</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">distance</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">angle</span><span class="p">[</span><span class="n">min_index</span><span class="p">],</span> <span class="n">distance</span><span class="p">[</span><span class="n">min_index</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="PiBOT.detect_objects"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.detect_objects">[docs]</a>    <span class="k">def</span> <span class="nf">detect_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">max_size</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Attempts to detect one or more objects in the foreground.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : list</span>
+<span class="sd">            The lidar angle data</span>
+<span class="sd">        distance : list</span>
+<span class="sd">            The lidar distance data</span>
+<span class="sd">        max_size : int, float, default=50</span>
+<span class="sd">            Maximum width of an object in cm to detect.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        3-tuple of lists</span>
+<span class="sd">            A triplet of lists comprising the approximate heading angles</span>
+<span class="sd">            in degrees to the center of the objects, the minimum</span>
+<span class="sd">            distances in cm to the objects, and their approximate widths</span>
+<span class="sd">            in cm.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Attempts to find objects in the foreground of lidar scan data by</span>
+<span class="sd">        detecting sharp changes in distance readings that represent</span>
+<span class="sd">        possible leading and trailing edges of an object. If both a</span>
+<span class="sd">        sharp decrease in distance (i.e., a step from far to near</span>
+<span class="sd">        representing a leading edge) and then a corresponding sharp</span>
+<span class="sd">        increase (i.e., a step from near to far representing a trailing</span>
+<span class="sd">        edge) are detected, an object is recorded.</span>
+
+<span class="sd">        The algorithm first calculates the derivative of the distance</span>
+<span class="sd">        with respect to angle to find points where the distance is</span>
+<span class="sd">        changing most rapidly. The negative and positive peaks of the</span>
+<span class="sd">        derivative data are recorded as possible leading and trailing</span>
+<span class="sd">        edges. Then the peaks are filtered to ensure they meet a minimum</span>
+<span class="sd">        threshold and that the derivative of the three points preceeding</span>
+<span class="sd">        or following the peak is fairly flat in comparision. The intent</span>
+<span class="sd">        of this simple filtering strategy is to find only the peaks</span>
+<span class="sd">        where a rapid change is occurring. Finally, the potential</span>
+<span class="sd">        leading and trailing edges are tested in sequence to determine</span>
+<span class="sd">        if there are pairs of first a leading and then a trailing edge.</span>
+<span class="sd">        From all pairs found, the edges are used to calculate the center</span>
+<span class="sd">        angle, minimum distance, and approximate width of each object,</span>
+<span class="sd">        which are stored in the corresponsing list. If no objects are</span>
+<span class="sd">        found, empty lists are returned.</span>
+
+<span class="sd">        Important</span>
+<span class="sd">        ---------</span>
+<span class="sd">        If an object is too far away or too narrow, it may not be</span>
+<span class="sd">        detected. It&#39;s also possible that this method will return data</span>
+<span class="sd">        for an object that doesn&#39;t really exist. The returned values are</span>
+<span class="sd">        less accurate when the object is farther from the robot because</span>
+<span class="sd">        of the 15 degree spread of the lidar beam. For better accuracy,</span>
+<span class="sd">        move closer to the object and rescan. The estimated distance and</span>
+<span class="sd">        width assumes the object has a flat face oriented perpendicular</span>
+<span class="sd">        to the axis of the robot. For irregular objects or objects</span>
+<span class="sd">        scanned at a glancing angle, the width and distance data will be</span>
+<span class="sd">        less accurate. The accuracy of the center angle depends on the</span>
+<span class="sd">        edge-finding algorithm, the distance of the object, and the</span>
+<span class="sd">        angle increment (i.e., step size) in the lidar data.</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Command a 120 degree counterclockwise scan and use the returned</span>
+<span class="sd">        values to detect objects. In this case the unpacking operator is</span>
+<span class="sd">        used to pass the angle and distance lists returned from the scan</span>
+<span class="sd">        directly into the .detect_objects() method. The returned object</span>
+<span class="sd">        lists are stored as local variables as shown. In this example</span>
+<span class="sd">        two objects are detected.</span>
+
+<span class="sd">        &gt;&gt;&gt; obj_angle, obj_dist, obj_width = robot.detect_objects(*robot.scan(120, ang_speed=120))</span>
+<span class="sd">        &gt;&gt;&gt; obj_angle</span>
+<span class="sd">        [42.69345, 83.32172]</span>
+<span class="sd">        &gt;&gt;&gt; obj_dist</span>
+<span class="sd">        [35.8, 44.3]</span>
+<span class="sd">        &gt;&gt;&gt; obj_width</span>
+<span class="sd">        [12.6, 31.8]</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle must be a list&#39;</span>
+                         <span class="o">+</span> <span class="s1">&#39; with at least 3 elements&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">angle</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle values must be numeric&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance must be a list&#39;</span>
+                         <span class="o">+</span> <span class="s1">&#39; with at least 3 elements&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">distance</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance values must be numeric&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">max_size</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: max_size must be a numeric value&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">max_size</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: max_size cannot be less than zero&#39;</span><span class="p">)</span>
+        <span class="c1"># initialize variables</span>
+        <span class="n">BEAM_ANGLE</span> <span class="o">=</span> <span class="mi">5</span> <span class="c1"># approximate width of lidar beam in degrees</span>
+        <span class="n">object_angle</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">object_distance</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">object_width</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># create a non-wrapping angle list (i.e., no +/- 180 wrap-around)</span>
+        <span class="n">ang_no_wrap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ang_no_wrap</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+        <span class="c1"># calculate the derivative with respect to the non-wrapping angle</span>
+        <span class="n">derivative</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lidar_derivative</span><span class="p">(</span><span class="n">ang_no_wrap</span><span class="p">,</span> <span class="n">distance</span><span class="p">)</span>
+        <span class="c1"># the peaks and possible leading and trailing edges</span>
+        <span class="n">negative_peaks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_negative_peaks</span><span class="p">(</span><span class="n">derivative</span><span class="p">)</span>
+        <span class="n">positive_peaks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_positive_peaks</span><span class="p">(</span><span class="n">derivative</span><span class="p">)</span>
+        <span class="n">leading_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_leading_edges</span><span class="p">(</span><span class="n">negative_peaks</span><span class="p">,</span> <span class="n">derivative</span><span class="p">)</span>
+        <span class="n">trailing_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trailing_edges</span><span class="p">(</span><span class="n">positive_peaks</span><span class="p">,</span> <span class="n">derivative</span><span class="p">)</span>
+        <span class="c1"># find adjacent pairs of leading and trailing edges</span>
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">leading_edges</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">trailing_edges</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># pop the first leading edge value out of the list</span>
+            <span class="n">leading_edge</span> <span class="o">=</span> <span class="n">leading_edges</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="c1"># check for corresponding trailing edges</span>
+            <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">trailing_edges</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># trailing edge must be after leading and before next leading</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">trailing_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">leading_edge</span>
+                        <span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">leading_edges</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+                             <span class="ow">or</span> <span class="n">trailing_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">leading_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">])):</span>
+                    <span class="n">trailing_edge</span> <span class="o">=</span> <span class="n">trailing_edges</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                    <span class="c1"># adjacent pair indicates object was found</span>
+                    <span class="n">leading_edge_angle</span> <span class="o">=</span> <span class="n">ang_no_wrap</span><span class="p">[</span><span class="n">leading_edge</span><span class="p">]</span>
+                    <span class="n">trailing_edge_angle</span> <span class="o">=</span> <span class="n">ang_no_wrap</span><span class="p">[</span><span class="n">trailing_edge</span><span class="p">]</span>
+                    <span class="n">center_angle</span> <span class="o">=</span> <span class="p">(</span><span class="n">leading_edge_angle</span> <span class="o">+</span> <span class="n">trailing_edge_angle</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span>
+                    <span class="c1"># adjust for +/- 180 wrapped values</span>
+                    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">center_angle</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">180</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">center_angle</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">center_angle</span> <span class="o">+=</span> <span class="mi">360</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">center_angle</span> <span class="o">-=</span> <span class="mi">360</span>
+                    <span class="n">included_angle</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">trailing_edge_angle</span>
+                                         <span class="o">-</span> <span class="n">leading_edge_angle</span><span class="p">)</span>
+                    <span class="c1"># exclude any included angles greater that resonable max</span>
+                    <span class="k">if</span> <span class="n">included_angle</span> <span class="o">&gt;</span> <span class="mi">150</span><span class="p">:</span>
+                        <span class="k">break</span>
+                    <span class="c1"># adjust for beam width</span>
+                    <span class="k">if</span> <span class="n">included_angle</span> <span class="o">&gt;</span> <span class="n">BEAM_ANGLE</span><span class="p">:</span>
+                        <span class="n">included_angle</span> <span class="o">=</span> <span class="n">included_angle</span> <span class="o">-</span> <span class="n">BEAM_ANGLE</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">included_angle</span> <span class="o">=</span> <span class="mi">5</span>
+                    <span class="c1"># find the minimum object distance</span>
+                    <span class="n">min_index</span> <span class="o">=</span> <span class="n">distance</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">distance</span><span class="p">[</span><span class="n">leading_edge</span>
+                                                            <span class="p">:</span><span class="n">trailing_edge</span><span class="p">]))</span>
+                    <span class="n">min_distance</span> <span class="o">=</span> <span class="n">distance</span><span class="p">[</span><span class="n">min_index</span><span class="p">]</span>
+                    <span class="c1"># calculate approximate object width</span>
+                    <span class="n">width</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">min_distance</span> <span class="o">*</span> <span class="n">tan</span><span class="p">(</span><span class="n">radians</span><span class="p">(</span><span class="n">included_angle</span><span class="o">/</span><span class="mi">2</span><span class="p">)))</span>
+                    <span class="c1"># ensure object width doesn&#39;t exceed max_width and append</span>
+                    <span class="k">if</span> <span class="n">width</span> <span class="o">&lt;=</span> <span class="n">max_size</span><span class="p">:</span>
+                        <span class="c1"># add object data to the corresponding lists</span>
+                        <span class="n">object_angle</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">center_angle</span><span class="p">)</span>
+                        <span class="n">object_distance</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">min_distance</span><span class="p">)</span>
+                        <span class="n">object_width</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+                    <span class="k">break</span>
+                <span class="c1"># if trailing edge is past next leading edge, go back</span>
+                <span class="k">elif</span> <span class="p">(</span><span class="n">trailing_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">leading_edge</span>
+                          <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">leading_edges</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span>
+                          <span class="ow">and</span> <span class="n">trailing_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">leading_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                    <span class="k">break</span>
+                <span class="c1"># otherwise toss out the trailing edge and keep checking</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">trailing_edge</span> <span class="o">=</span> <span class="n">trailing_edges</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">object_angle</span><span class="p">,</span> <span class="n">object_distance</span><span class="p">,</span> <span class="n">object_width</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_ang_no_wrap</span><span class="p">(</span><span class="n">angle</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts the lidar angle data to a non-wrapping list.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : list</span>
+<span class="sd">            The lidar angle data from a scan</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list</span>
+<span class="sd">            A list of non-wrapping lidar angle values.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">wraps</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">ang_no_wrap</span> <span class="o">=</span> <span class="n">angle</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="c1"># check for +/- 180 crossing and set number and sign of wrap</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">180</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">wraps</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">elif</span> <span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">wraps</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="c1"># adjust angle for non-wrapping values</span>
+            <span class="k">if</span> <span class="n">wraps</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">ang_no_wrap</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span> <span class="o">*</span> <span class="n">wraps</span>
+        <span class="k">return</span> <span class="n">ang_no_wrap</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_lidar_derivative</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finds derivative of lidar distance with respect to angle.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : list</span>
+<span class="sd">            The non-wrapping lidar angle data</span>
+<span class="sd">        distance : list</span>
+<span class="sd">            The lidar distance data</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list</span>
+<span class="sd">            A list of derivative values.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The first value uses the forward difference calculation,</span>
+<span class="sd">        intermediate values use the central difference, and the last</span>
+<span class="sd">        value uses the backward difference. If the difference in angle</span>
+<span class="sd">        is zero, the derivative is calculated as the average of the two</span>
+<span class="sd">        adjacent derivative values. If the difference in angle is zero</span>
+<span class="sd">        at the start/end of the list, then the derivative is set equal</span>
+<span class="sd">        to the adjacent value.</span>
+
+<span class="sd">        Because the angle steps are non-uniform based on how the robot</span>
+<span class="sd">        scan is performed, it is possible to have angle steps that are</span>
+<span class="sd">        very small compared to the desired step, causing large</span>
+<span class="sd">        uncertainty in the derivative calculation. In cases where the</span>
+<span class="sd">        angle difference is less than 10% of the desired step, the</span>
+<span class="sd">        same technique for dealing with a zero angle difference is</span>
+<span class="sd">        employed to prevent large spikes in the derivative values.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">lidar_derivative</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># calculate the average angle step from angle start and end values</span>
+        <span class="n">angle_step</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">((</span><span class="n">angle</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="c1"># for first point use forward difference calculation</span>
+        <span class="k">if</span> <span class="n">angle</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">angle_step</span><span class="p">:</span>
+            <span class="n">lidar_derivative</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lidar_derivative</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">distance</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">distance</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                                    <span class="o">/</span><span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="c1"># for intermediate points use central difference calculation</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span>
+                    <span class="ow">or</span> <span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">angle_step</span><span class="p">):</span>
+                <span class="n">lidar_derivative</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">lidar_derivative</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">distance</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">distance</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                                        <span class="o">/</span><span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="c1"># for last point use backward difference calculation</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">angle</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span>
+                <span class="ow">or</span> <span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">angle</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">angle_step</span><span class="p">):</span>
+            <span class="n">lidar_derivative</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lidar_derivative</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">distance</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">distance</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+                                    <span class="o">/</span><span class="nb">abs</span><span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">angle</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]))</span>
+        <span class="c1"># fill in all values that could not be calculated</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lidar_derivative</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># if it&#39;s the first value, set it to nearest adjacent</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">j</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="k">while</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="k">if</span> <span class="n">j</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">lidar_derivative</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                            <span class="k">break</span>
+                    <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+                <span class="c1"># if it&#39;s an intermediate value, use an adjacent or average</span>
+                <span class="k">elif</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">lidar_derivative</span><span class="p">)</span><span class="o">-</span><span class="mi">2</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                                               <span class="o">+</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span>
+                <span class="c1"># if it&#39;s the last value, use the nearest adjacent</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">lidar_derivative</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_negative_peaks</span><span class="p">(</span><span class="n">lidar_derivative</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finds all negative peaks in the lidar derivative list.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lidar_derivative : list</span>
+<span class="sd">            The data calculated with the _lidar_derivative function</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list</span>
+<span class="sd">            A list of indices representing all negative peak values</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># initialize variables to store peaks</span>
+        <span class="n">peak_index</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">negative_peaks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># look for local minima that are negative and below threshold</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lidar_derivative</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                    <span class="ow">and</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">cnst</span><span class="o">.</span><span class="n">MIN_THRESHOLD</span><span class="p">):</span>
+                <span class="n">peak_index</span> <span class="o">=</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span>
+            <span class="c1"># store the negative peak</span>
+            <span class="k">elif</span> <span class="n">peak_index</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">peak_index</span> <span class="o">==</span> <span class="n">i</span><span class="p">:</span>
+                <span class="n">negative_peaks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">peak_index</span><span class="p">)</span>
+        <span class="c1"># store last point if descending and below threshold</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">lidar_derivative</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+                <span class="ow">and</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">cnst</span><span class="o">.</span><span class="n">MIN_THRESHOLD</span><span class="p">):</span>
+            <span class="n">negative_peaks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lidar_derivative</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">negative_peaks</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_positive_peaks</span><span class="p">(</span><span class="n">lidar_derivative</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finds all positive peaks in the lidar derivative list.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lidar_derivative : list</span>
+<span class="sd">            The data calculated with the _lidar_derivative function</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list</span>
+<span class="sd">            A list of indices representing all positive peak values</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># initialize variables to store peaks</span>
+        <span class="n">peak_index</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">positive_peaks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># look for local maxima that are positive and above threshold</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lidar_derivative</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                    <span class="ow">and</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">MIN_THRESHOLD</span><span class="p">):</span>
+                <span class="n">peak_index</span> <span class="o">=</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span>
+            <span class="c1"># store the positive peak</span>
+            <span class="k">elif</span> <span class="n">peak_index</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">peak_index</span> <span class="o">==</span> <span class="n">i</span><span class="p">:</span>
+                <span class="n">positive_peaks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">peak_index</span><span class="p">)</span>
+        <span class="c1"># store last point if ascending and above threshold</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">lidar_derivative</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+                <span class="ow">and</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">MIN_THRESHOLD</span><span class="p">):</span>
+            <span class="n">positive_peaks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lidar_derivative</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">positive_peaks</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_leading_edges</span><span class="p">(</span><span class="n">negative_peaks</span><span class="p">,</span> <span class="n">derivative</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finds leading edges of possible objects in foreground.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        negative_peaks : list</span>
+<span class="sd">            An index list of negative peaks in the lidar derivative list</span>
+<span class="sd">        derivative : list</span>
+<span class="sd">            The derivative of the lidar distance with respect to angle</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list</span>
+<span class="sd">            A list of indices in the lidar data for points with steep</span>
+<span class="sd">            slopes compared to the surrounding points that represent</span>
+<span class="sd">            possible leading edges.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># initialize variables to test for edges and store their indices</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">leading_edges</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># get the start and stop indices of each peak</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">negative_peaks</span><span class="p">)):</span>
+            <span class="n">start_index</span> <span class="o">=</span> <span class="n">negative_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">end_index</span> <span class="o">=</span> <span class="n">negative_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="c1"># work backwards to include points in peak above threshold</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">negative_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+                   <span class="ow">and</span> <span class="p">(</span><span class="n">derivative</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                        <span class="o">/</span><span class="n">derivative</span><span class="p">[</span><span class="n">negative_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]])</span> <span class="o">&gt;=</span> <span class="n">cnst</span><span class="o">.</span><span class="n">PEAK_THRESHOLD</span>
+                   <span class="ow">and</span> <span class="n">derivative</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">derivative</span><span class="p">[</span><span class="n">negative_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]]):</span>
+                <span class="n">start_index</span> <span class="o">=</span> <span class="n">index</span>
+                <span class="n">index</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="c1"># work forwards to include points in peak above threshold</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">negative_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">derivative</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
+                   <span class="ow">and</span> <span class="p">(</span><span class="n">derivative</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                        <span class="o">/</span><span class="n">derivative</span><span class="p">[</span><span class="n">negative_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]])</span> <span class="o">&gt;=</span> <span class="n">cnst</span><span class="o">.</span><span class="n">PEAK_THRESHOLD</span>
+                   <span class="ow">and</span> <span class="n">derivative</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">derivative</span><span class="p">[</span><span class="n">negative_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]]):</span>
+                <span class="n">end_index</span> <span class="o">=</span> <span class="n">index</span>
+                <span class="n">index</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1"># test for peak above threshold of average points to left</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">start_index</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">average</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">while</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">NUM_ADJACENT</span><span class="p">:</span>
+                <span class="n">average</span> <span class="o">+=</span> <span class="n">derivative</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                <span class="n">index</span> <span class="o">-=</span> <span class="mi">1</span>
+                <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">j</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">average</span> <span class="o">=</span> <span class="n">average</span> <span class="o">/</span> <span class="n">j</span>
+                <span class="k">if</span> <span class="n">average</span><span class="o">/</span><span class="n">derivative</span><span class="p">[</span><span class="n">negative_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">&lt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ADJ_THRESHOLD</span><span class="p">:</span>
+                    <span class="n">start</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">start</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="c1"># test for peak above threshold of average points to right</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">end_index</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">average</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">while</span> <span class="n">index</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">derivative</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">NUM_ADJACENT</span><span class="p">:</span>
+                <span class="n">average</span> <span class="o">+=</span> <span class="n">derivative</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                <span class="n">index</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">j</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">average</span> <span class="o">=</span> <span class="n">average</span> <span class="o">/</span> <span class="n">j</span>
+                <span class="k">if</span> <span class="n">average</span><span class="o">/</span><span class="n">derivative</span><span class="p">[</span><span class="n">negative_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">&lt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ADJ_THRESHOLD</span><span class="p">:</span>
+                    <span class="n">end</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">end</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="c1"># check for threshold passed at start and end of potential edge</span>
+            <span class="k">if</span> <span class="n">start</span> <span class="ow">and</span> <span class="n">end</span><span class="p">:</span>
+                <span class="n">leading_edges</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">negative_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="n">start</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">end</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="n">leading_edges</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_trailing_edges</span><span class="p">(</span><span class="n">positive_peaks</span><span class="p">,</span> <span class="n">derivative</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finds trailing edges of possible objects in foreground.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        positive_peaks : list</span>
+<span class="sd">            An index list of positive peaks in the lidar derivative list</span>
+<span class="sd">        derivative : list</span>
+<span class="sd">            The derivative of the lidar distance with respect to angle</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list</span>
+<span class="sd">            A list of indices in the lidar data for points with steep</span>
+<span class="sd">            slopes compared to the surrounding points that represent</span>
+<span class="sd">            possible trailing edges.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># initialize variables to test for edges and store their indices</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">trailing_edges</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># get the start and stop indices of each peak</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">positive_peaks</span><span class="p">)):</span>
+            <span class="n">start_index</span> <span class="o">=</span> <span class="n">positive_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">end_index</span> <span class="o">=</span> <span class="n">positive_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="c1"># work backwards to include points in peak above threshold</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">positive_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+                   <span class="ow">and</span> <span class="p">(</span><span class="n">derivative</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                        <span class="o">/</span><span class="n">derivative</span><span class="p">[</span><span class="n">positive_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]])</span> <span class="o">&gt;=</span> <span class="n">cnst</span><span class="o">.</span><span class="n">PEAK_THRESHOLD</span>
+                   <span class="ow">and</span> <span class="n">derivative</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">derivative</span><span class="p">[</span><span class="n">positive_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]]):</span>
+                <span class="n">start_index</span> <span class="o">=</span> <span class="n">index</span>
+                <span class="n">index</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="c1"># work forwards to include points in peak above threshold</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">positive_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="k">while</span> <span class="p">(</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">derivative</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
+                   <span class="ow">and</span> <span class="p">(</span><span class="n">derivative</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                        <span class="o">/</span><span class="n">derivative</span><span class="p">[</span><span class="n">positive_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]])</span> <span class="o">&gt;=</span> <span class="n">cnst</span><span class="o">.</span><span class="n">PEAK_THRESHOLD</span>
+                   <span class="ow">and</span> <span class="n">derivative</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">derivative</span><span class="p">[</span><span class="n">positive_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]]):</span>
+                <span class="n">end_index</span> <span class="o">=</span> <span class="n">index</span>
+                <span class="n">index</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1"># test for peak above threshold of average points to left</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">start_index</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">average</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">while</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">NUM_ADJACENT</span><span class="p">:</span>
+                <span class="n">average</span> <span class="o">+=</span> <span class="n">derivative</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                <span class="n">index</span> <span class="o">-=</span> <span class="mi">1</span>
+                <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">j</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">average</span> <span class="o">=</span> <span class="n">average</span> <span class="o">/</span> <span class="n">j</span>
+                <span class="k">if</span> <span class="n">average</span><span class="o">/</span><span class="n">derivative</span><span class="p">[</span><span class="n">positive_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">&lt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ADJ_THRESHOLD</span><span class="p">:</span>
+                    <span class="n">start</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">start</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="c1"># test for peak above threshold of average points to right</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">end_index</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">average</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">while</span> <span class="n">index</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">derivative</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">NUM_ADJACENT</span><span class="p">:</span>
+                <span class="n">average</span> <span class="o">+=</span> <span class="n">derivative</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                <span class="n">index</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">j</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">average</span> <span class="o">=</span> <span class="n">average</span> <span class="o">/</span> <span class="n">j</span>
+                <span class="k">if</span> <span class="n">average</span><span class="o">/</span><span class="n">derivative</span><span class="p">[</span><span class="n">positive_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">&lt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ADJ_THRESHOLD</span><span class="p">:</span>
+                    <span class="n">end</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">end</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="c1"># check for threshold passed at start and end of potential edge</span>
+            <span class="k">if</span> <span class="n">start</span> <span class="ow">and</span> <span class="n">end</span><span class="p">:</span>
+                <span class="n">trailing_edges</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">positive_peaks</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="n">start</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">end</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="n">trailing_edges</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Turner Howard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

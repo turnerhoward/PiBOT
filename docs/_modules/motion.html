@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>motion &mdash; Physics 360 PiBOT 1.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Physics 360 PiBOT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">lib</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Physics 360 PiBOT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">motion</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for motion</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">The Motion class defined in this module contains several methods to move</span>
+<span class="sd">the PiBOT. The path planning and motor control needed to enable smooth</span>
+<span class="sd">and accurate motion are fairly complex and involve calculating the</span>
+<span class="sd">desired wheel rotation for each time step, measuring the actual rotation</span>
+<span class="sd">with encoders on each motor, and computing the required motor effort</span>
+<span class="sd">with a closed-loop PID algorithm. Those tasks are encapsulated in the</span>
+<span class="sd">Control class, which does not have any user-accessible attributes or</span>
+<span class="sd">methods and works behind the scenes on the second core of the RP2040</span>
+<span class="sd">microcontroller to maintain a fast (approximately 10 ms) time step. The</span>
+<span class="sd">user-accessible methods in the Motion class must have access to the</span>
+<span class="sd">private attributes of the Control class to operate the PiBOT. Therefore,</span>
+<span class="sd">when the PiBOT object is created, an instance of Control called</span>
+<span class="sd">&quot;_control&quot; is passed into an instance of Motion called &quot;move&quot;.</span>
+
+<span class="sd">The &quot;_control&quot; object runs an infinite loop on the second core using the</span>
+<span class="sd">_thread module. The loop checks for new events, manages motion, and</span>
+<span class="sd">attempts to maintain a uniform time step of 10 ms. When a user calls one</span>
+<span class="sd">of the methods of the &quot;move&quot; object from the main core, attributes are</span>
+<span class="sd">set in the &quot;_control&quot; object, and the control loop running on the second</span>
+<span class="sd">core takes action to handle the path planning and control.</span>
+
+<span class="sd">As a result of this multi-threaded, event-driven approach to controlling</span>
+<span class="sd">the PiBOT motion, it is possible to send many motion commands to the</span>
+<span class="sd">control loop in quick succession such that earlier commands will not</span>
+<span class="sd">finish before being replaced by later commands. For example, if a user</span>
+<span class="sd">requests forward motion at 10 cm/s for a distance of 10 cm, that command</span>
+<span class="sd">is received by the control loop and started immediately. The main core</span>
+<span class="sd">is then ready to handle more commands. Meanwhile, the PiBOT has just</span>
+<span class="sd">started accelerating and won&#39;t complete the requested move for about</span>
+<span class="sd">another second. If the user then requests 90 degree rotation with</span>
+<span class="sd">another motion command, the control loop immediately starts rotation.</span>
+<span class="sd">From the user perspective, the forward motion appears to be skipped over</span>
+<span class="sd">and all they see is rotation. In effect, the user motion calls are</span>
+<span class="sd">non-blocking, meaning that they don&#39;t tie up and pause a program until</span>
+<span class="sd">the motion is completed. The advantage to this approach is that while</span>
+<span class="sd">motion is managed on the second core, the main core is free to take many</span>
+<span class="sd">other actions like checking sensors.</span>
+
+<span class="sd">Important</span>
+<span class="sd">---------</span>
+<span class="sd">To create a sequence of motion where later motion calls do not overwrite</span>
+<span class="sd">the earlier ones, a means of waiting is required. A simple time delay</span>
+<span class="sd">could be used but would require calculating the duration of each delay</span>
+<span class="sd">and would eliminate the advantage of non-blocking motion that allows</span>
+<span class="sd">other commands to run concurrently. Instead, there is a special &quot;queue&quot;</span>
+<span class="sd">argument in several of the &quot;move&quot; methods that puts motion calls in a</span>
+<span class="sd">queued sequence. When one move finishes, the control loop checks for</span>
+<span class="sd">moves waiting in the queue and automatically starts the next one. The</span>
+<span class="sd">examples below in the Motion class demonstrate how to use the queue.</span>
+
+<span class="sd">Note</span>
+<span class="sd">----</span>
+<span class="sd">By default, when a &quot;move&quot; method is called, the control loop stops any</span>
+<span class="sd">active motion and starts the new request immediately. There is an</span>
+<span class="sd">argument in several of the methods called &quot;protect&quot; that prevents active</span>
+<span class="sd">motion from being interrupted by any subsequent motion calls. When using</span>
+<span class="sd">the &quot;queue&quot; argument, the &quot;protect&quot; argument is automatically set to</span>
+<span class="sd">ensure that queued moves run uninterrupted before the next one starts.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">constants</span> <span class="k">as</span> <span class="nn">cnst</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">pi</span>
+
+
+<div class="viewcode-block" id="Motion"><a class="viewcode-back" href="../motion.html#motion.Motion">[docs]</a><span class="k">class</span> <span class="nc">Motion</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates user motion commands for PiBOT.</span>
+
+<span class="sd">    ...</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    _control : object</span>
+<span class="sd">        Instance of the Control class.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    When creating an instance of the PiBOT class, an instance of the</span>
+<span class="sd">    Control class is passed to this Motion class to gain access to the</span>
+<span class="sd">    control attributes.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_control</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates references to control attributes.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span> <span class="o">=</span> <span class="n">_control</span>
+
+<div class="viewcode-block" id="Motion.pause"><a class="viewcode-back" href="../motion.html#motion.Motion.pause">[docs]</a>    <span class="k">def</span> <span class="nf">pause</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Smoothly pauses all motion by ramping down velocity.</span>
+
+<span class="sd">        Note</span>
+<span class="sd">        ----</span>
+<span class="sd">        Calling .pause() halts any motion command, including protected</span>
+<span class="sd">        and queued motion.</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_pause</span><span class="p">()</span>
+        <span class="c1"># wait until the motion ramps down and the state is at pause</span>
+        <span class="k">while</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_state</span> <span class="o">!=</span> <span class="s1">&#39;pause&#39;</span>
+               <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_curr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;ready&#39;</span><span class="p">):</span>
+            <span class="k">continue</span></div>
+
+<div class="viewcode-block" id="Motion.resume"><a class="viewcode-back" href="../motion.html#motion.Motion.resume">[docs]</a>    <span class="k">def</span> <span class="nf">resume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Smoothly resumes motion after a pause.</span>
+<span class="sd">        </span>
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+<span class="sd">     </span>
+<span class="sd">        Move 10 cm at 5 cm/s and protect the motion from interruptions</span>
+<span class="sd">        by other motion commands. Pause after 1 second and then resume</span>
+<span class="sd">        the previous motion after 1 more second. Notice that the</span>
+<span class="sd">        .pause() method always halts motion, even protected moves.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.forward(5, 10, protect=True)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(1)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.pause()</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(1)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.resume()</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_resume</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Motion.forward"><a class="viewcode-back" href="../motion.html#motion.Motion.forward">[docs]</a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Commands a forward (or reverse) linear path with constant speed.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        speed : int or float</span>
+<span class="sd">            The desired speed in cm/s. Range from 5 to 30 cm/s.</span>
+<span class="sd">        distance : int or float, default=0</span>
+<span class="sd">            The desired distance to travel in cm. The default of zero</span>
+<span class="sd">            commands continuous motion.</span>
+<span class="sd">        protect : bool, default=False</span>
+<span class="sd">            Prevents interruption by another motion command.</span>
+<span class="sd">        queue : bool, default=False</span>
+<span class="sd">            Adds motion call to a queue for a sequence.</span>
+<span class="sd">        reverse : bool, default=False</span>
+<span class="sd">            Reverses the direction.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Uses a linear velocity profile to approximate constant</span>
+<span class="sd">        acceleration by ramping velocity up and down at the start and</span>
+<span class="sd">        stop, which produces smoother motion with less wheel slippage.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Command continuous motion at 10 cm/s and pause after 2 seconds.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.forward(10)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(2)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.pause()</span>
+
+<span class="sd">        Move 10 cm at 15 cm/s and protect the motion from interruptions</span>
+<span class="sd">        by other motion commands.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.forward(15, 10, protect=True)</span>
+
+<span class="sd">        Store moves in the queue to run a sequence. Note: protect is set</span>
+<span class="sd">        to True when using a queue to prevent later queue entries from</span>
+<span class="sd">        interrupting the earlier ones.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.forward(5, 5, queue=True)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.reverse(5, 5, queue=True)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.forward(20, 10, queue=True)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.reverse(20, 10, queue=True)</span>
+<span class="sd">        </span>
+<span class="sd">        An unprotected move can be interrupted at any time with a new</span>
+<span class="sd">        motion call. The control loop handles the smooth transitions.</span>
+<span class="sd">        The following example calls forward motion and then reverse</span>
+<span class="sd">        without stopping first.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.forward(10)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(1)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.reverse(20, 10)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_arguments</span><span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">speed</span><span class="o">=</span><span class="n">speed</span><span class="p">,</span>
+                                          <span class="n">distance</span><span class="o">=</span><span class="n">distance</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="n">protect</span><span class="p">,</span>
+                                          <span class="n">queue</span><span class="o">=</span><span class="n">queue</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="n">reverse</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: invalid argument to .forward() method&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="c1"># do nothing if motion is protected and the command is not queued</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_protect</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">queue</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="c1"># change signs for reverse direction</span>
+        <span class="k">if</span> <span class="n">reverse</span><span class="p">:</span>
+            <span class="n">speed</span> <span class="o">=</span> <span class="o">-</span><span class="n">speed</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="o">-</span><span class="n">distance</span>
+        <span class="c1"># store motion in queue if requested</span>
+        <span class="k">if</span> <span class="n">queue</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_queue</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span>
+                                             <span class="n">distance</span><span class="p">])</span>
+            <span class="c1"># ensure motion is protected before returning</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_protect</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">return</span>
+        <span class="c1"># store command in _motion_curr attribute</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># assign the command to &#39;motion_call&#39; to test for repeats</span>
+            <span class="n">motion_call</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="n">distance</span><span class="p">]</span>
+            <span class="c1"># return without calling motion if a repeat is being requested</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_repeat_call</span><span class="p">(</span><span class="n">motion_call</span><span class="p">):</span>
+                <span class="k">return</span>
+            <span class="c1"># check for running motion and ramp it down if needed</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_state</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="s1">&#39;pause&#39;</span><span class="p">,</span> <span class="s1">&#39;steer&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+            <span class="c1"># store command in motion_curr attribute</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_curr</span> <span class="o">=</span> <span class="n">motion_call</span>
+            <span class="c1"># clear out old queue when calling new non-sequence move</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_queue</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="c1"># ensure motion has started before returning</span>
+            <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_state</span> <span class="o">!=</span> <span class="s1">&#39;linear&#39;</span><span class="p">:</span>
+                <span class="k">continue</span></div>
+
+<div class="viewcode-block" id="Motion.reverse"><a class="viewcode-back" href="../motion.html#motion.Motion.reverse">[docs]</a>    <span class="k">def</span> <span class="nf">reverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Commands a linear reverse path with constant speed.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        speed : int or float</span>
+<span class="sd">            The desired speed in cm/s. Range from 5 to 30 cm/s.</span>
+<span class="sd">        distance : int or float, default=0</span>
+<span class="sd">            The desired distance to travel in cm. The default of zero</span>
+<span class="sd">            commands continuous motion.</span>
+<span class="sd">        protect : bool, default=False</span>
+<span class="sd">            Prevents interruption by another motion command.</span>
+<span class="sd">        queue : bool, default=False</span>
+<span class="sd">            Adds motion call to a queue for a sequence.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Reverse linear motion is generated using the .forward() method</span>
+<span class="sd">        with the reverse parameter set to True.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">speed</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="n">queue</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Motion.rotate_left"><a class="viewcode-back" href="../motion.html#motion.Motion.rotate_left">[docs]</a>    <span class="k">def</span> <span class="nf">rotate_left</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ang_speed</span><span class="o">=</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MAX</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">queue</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Commands counterclockwise rotation in place.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : int or float, default=0 for continuous, maximum 720</span>
+<span class="sd">            The desired rotation angle in degrees.</span>
+<span class="sd">        ang_speed : int or float, default=180 deg/s</span>
+<span class="sd">            The desired angular speed. Range from 30 to 180 deg/s.</span>
+<span class="sd">        protect : bool, default=False</span>
+<span class="sd">            Prevents interruption by another motion command.</span>
+<span class="sd">        queue : bool, default=False</span>
+<span class="sd">            Adds motion call to a queue for a sequence.</span>
+<span class="sd">        right : bool, default=False</span>
+<span class="sd">            Commands right (clockwise) rotation instead of left.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Uses a ramped angular velocity profile to approximate constant</span>
+<span class="sd">        acceleration by ramping velocity up and down at the start and</span>
+<span class="sd">        stop, which produces smoother motion with less wheel slippage.</span>
+<span class="sd">        The maximum angular speed and acceleration are set by the</span>
+<span class="sd">        constants ANG_SPD_MAX and ANG_ACC and should not be changed.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Rotate right and then left back to starting position at default</span>
+<span class="sd">        speed of 180 deg/s, which is also the maximum.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.rotate_left(45)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(1)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.rotate_right(45)</span>
+
+<span class="sd">        Move 10 cm at 15 cm/s, turn around at 30 deg/s, return to</span>
+<span class="sd">        starting point, and turn around at maximum speed of 180 deg/s.</span>
+<span class="sd">        This motion uses the queue parameter to create a sequence.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.forward(15, 10, queue=True)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.rotate_left(180, 30, queue=True)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.forward(15, 10, queue=True)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.rotate_right(180, 180, queue=True)</span>
+<span class="sd">        </span>
+<span class="sd">        If discrete rotation is called while another unprotected move is</span>
+<span class="sd">        in progress, the rotation temporarily interrupts the current</span>
+<span class="sd">        motion and then resumes it after completing the rotation.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.forward(5, 20)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(2)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.rotate_left(180)</span>
+<span class="sd">        </span>
+<span class="sd">        If continuous rotation interrupts another move, that move is</span>
+<span class="sd">        canceled and cannot be resumed.</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; robot.move.forward(5)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(2)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.rotate_left(ang_speed=90)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(2)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.pause()</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(2)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.resume()</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(2)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.pause()</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_arguments</span><span class="p">(</span><span class="s1">&#39;rotate&#39;</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">,</span>
+                                          <span class="n">ang_speed</span><span class="o">=</span><span class="n">ang_speed</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="n">protect</span><span class="p">,</span>
+                                          <span class="n">queue</span><span class="o">=</span><span class="n">queue</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="n">right</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: invalid argument to .rotate_left() method&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="c1"># do nothing if motion is protected and the command is not queued</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_protect</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">queue</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="c1"># calculate desired rotation angle (radians)</span>
+        <span class="n">angle</span> <span class="o">=</span> <span class="n">angle</span><span class="o">*</span><span class="p">(</span><span class="n">pi</span><span class="o">/</span><span class="mi">180</span><span class="p">)</span>
+        <span class="c1"># calculate desired angular speed (radians/second)</span>
+        <span class="n">ang_speed</span> <span class="o">=</span> <span class="n">ang_speed</span><span class="o">*</span><span class="p">(</span><span class="n">pi</span><span class="o">/</span><span class="mi">180</span><span class="p">)</span>
+        <span class="c1"># adjust angle and speed for right rotation (i.e., clockwise)</span>
+        <span class="k">if</span> <span class="n">right</span><span class="p">:</span>
+            <span class="n">angle</span> <span class="o">=</span> <span class="o">-</span><span class="n">angle</span>
+            <span class="n">ang_speed</span> <span class="o">=</span> <span class="o">-</span><span class="n">ang_speed</span>
+        <span class="c1"># store motion in queue if requested</span>
+        <span class="k">if</span> <span class="n">queue</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_resume</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ready&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_queue</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;rotate&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">ang_speed</span><span class="p">,</span>
+                                             <span class="n">angle</span><span class="p">])</span>
+            <span class="c1"># ensure motion is protected before returning</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_protect</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">return</span>
+        <span class="c1"># store command in _motion_curr attribute</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># assign the command to &#39;motion_call&#39; to test for repeats</span>
+            <span class="n">motion_call</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;rotate&#39;</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="n">ang_speed</span><span class="p">,</span> <span class="n">angle</span><span class="p">]</span>
+            <span class="c1"># return without calling motion if a repeat is being requested</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_repeat_call</span><span class="p">(</span><span class="n">motion_call</span><span class="p">):</span>
+                <span class="k">return</span>
+            <span class="c1"># if interrupting, store current motion to resume after rotation</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_resume</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ready&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_state</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="s1">&#39;pause&#39;</span><span class="p">,</span> <span class="s1">&#39;rotate&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_resume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_prev</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="c1"># check for running motion and ramp it down if needed</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_state</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="s1">&#39;pause&#39;</span><span class="p">,</span> <span class="s1">&#39;steer&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+            <span class="c1"># store command in motion_curr attribute</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_curr</span> <span class="o">=</span> <span class="n">motion_call</span>
+            <span class="c1"># clear out old queue when calling new non-sequence move</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_queue</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="c1"># ensure motion has started before returning</span>
+            <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_state</span> <span class="o">!=</span> <span class="s1">&#39;rotate&#39;</span><span class="p">:</span>
+                <span class="k">continue</span></div>
+
+<div class="viewcode-block" id="Motion.rotate_right"><a class="viewcode-back" href="../motion.html#motion.Motion.rotate_right">[docs]</a>    <span class="k">def</span> <span class="nf">rotate_right</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ang_speed</span><span class="o">=</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MAX</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                     <span class="n">queue</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Commands clockwise rotation in place.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : int or float, default=0 for continuous, maximum 720</span>
+<span class="sd">            The desired rotation angle in degrees.</span>
+<span class="sd">        ang_speed : int or float, default=180 deg/s</span>
+<span class="sd">            The desired angular speed. Range from 30 to 180 deg/s.</span>
+<span class="sd">        protect : bool, default=False</span>
+<span class="sd">            Prevents interruption by another motion command.</span>
+<span class="sd">        queue : bool, default=False</span>
+<span class="sd">            Adds motion call to a queue for a sequence.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Right rotation is generated using the .rotate_left() method with</span>
+<span class="sd">        the &quot;right&quot; parameter set to True.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">rotate_left</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">ang_speed</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="n">queue</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Motion.rotate_to_heading"><a class="viewcode-back" href="../motion.html#motion.Motion.rotate_to_heading">[docs]</a>    <span class="k">def</span> <span class="nf">rotate_to_heading</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">desired_heading</span><span class="p">,</span> <span class="n">ang_speed</span><span class="o">=</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MAX</span><span class="p">,</span>
+                          <span class="n">direction</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculates and commands rotation to the desired heading.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        desired_heading : int or float, maximum +/- 180</span>
+<span class="sd">            The desired heading angle in degrees.</span>
+<span class="sd">        ang_speed : int or float, default=180 deg/s</span>
+<span class="sd">            The desired angular speed. Range from 30 to 180 deg/s.</span>
+<span class="sd">        direction : {&#39;left&#39;, &#39;right&#39;}, default is None for shortest angle</span>
+<span class="sd">            The rotation direction for robot to turn to heading.</span>
+<span class="sd">        protect : bool, default=False</span>
+<span class="sd">            Prevents interruption by another motion command.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Calculates the angle required to rotate the robot to the desired</span>
+<span class="sd">        heading, and then uses the .rotate_left() or .rotate_right()</span>
+<span class="sd">        methods to command rotation. The rotation direction can be set</span>
+<span class="sd">        to &#39;left&#39; (i.e., counterclockwise) or &#39;right&#39; (i.e., clockwise).</span>
+<span class="sd">        If no direction is specified, the rotation direction is</span>
+<span class="sd">        determined automatically for the shortest rotation angle.</span>
+
+<span class="sd">        Note</span>
+<span class="sd">        ----</span>
+<span class="sd">        The angle calculation is done at the time this method is called,</span>
+<span class="sd">        not when the motion is executed later in the control loop. There</span>
+<span class="sd">        is no provision to queue this method in a sequence because the</span>
+<span class="sd">        calulation will be based on the heading before the sequence</span>
+<span class="sd">        starts, and likely not at the correct step in the sequence. Use</span>
+<span class="sd">        the robot.moving or robot.busy properties to wait for other</span>
+<span class="sd">        motion to finish and call this method at the time it is needed.</span>
+<span class="sd">        </span>
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Rotate right 90 degrees.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.rotate_right(90)</span>
+<span class="sd">        </span>
+<span class="sd">        Wait for motion to stop and check heading.</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; robot.heading</span>
+<span class="sd">        -89.8435</span>
+<span class="sd">        </span>
+<span class="sd">        Rotate to a heading of 180 degrees.</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; robot.move.rotate_to_heading(180)</span>
+<span class="sd">        </span>
+<span class="sd">        Wait for motion to stop and check heading.</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; robot.heading</span>
+<span class="sd">        -179.4782</span>
+<span class="sd">        </span>
+<span class="sd">        Notice in this case, the robot took the shortest path using</span>
+<span class="sd">        the .rotate_right() method (i.e., clockwise rotation). The</span>
+<span class="sd">        returned heading angle is negative, but it is very close to the</span>
+<span class="sd">        crossover point of +/-180 degrees. If the robot had over rotated</span>
+<span class="sd">        slightly instead of under rotating, the heading value would have</span>
+<span class="sd">        been positive. Using the direction parameter forces the desired</span>
+<span class="sd">        rotation direction as shown below where the robot slowly rotates</span>
+<span class="sd">        back to its starting position (i.e., heading of 0 degrees) with</span>
+<span class="sd">        the left direction (i.e., counterclockwise):</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; robot.move.rotate_to_heading(0, ang_speed=30, direction=&#39;left&#39;)</span>
+<span class="sd">        </span>
+<span class="sd">        Wait for motion to stop and check heading.</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; robot.heading</span>
+<span class="sd">        -0.5215316</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_arguments</span><span class="p">(</span><span class="s1">&#39;heading&#39;</span><span class="p">,</span> <span class="n">heading</span><span class="o">=</span><span class="n">desired_heading</span><span class="p">,</span>
+                                          <span class="n">direction</span><span class="o">=</span><span class="n">direction</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: invalid argument to .rotate_to_heading() method&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="c1"># wait to avoid getting heading while _tracking() method is active</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_tracking_lock</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">current_heading</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_heading</span> <span class="o">*</span> <span class="p">(</span><span class="mi">180</span><span class="o">/</span><span class="n">pi</span><span class="p">)</span>
+        <span class="c1"># calculate rotation angle to arrive at heading (final - intial)</span>
+        <span class="n">rotation_angle</span> <span class="o">=</span> <span class="n">desired_heading</span> <span class="o">-</span> <span class="n">current_heading</span>
+        <span class="c1"># if rotation direction is set to left, ensure a positive angle</span>
+        <span class="k">if</span> <span class="n">direction</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">rotation_angle</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">rotation_angle</span> <span class="o">+=</span> <span class="mi">360</span>
+        <span class="c1"># if rotation direction is set to right, ensure a negative angle</span>
+        <span class="k">elif</span> <span class="n">direction</span> <span class="o">==</span> <span class="s1">&#39;right&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">rotation_angle</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">rotation_angle</span> <span class="o">-=</span> <span class="mi">360</span>
+        <span class="c1"># otherwise find the shortest angular path direction</span>
+        <span class="k">elif</span> <span class="n">rotation_angle</span> <span class="o">&gt;</span> <span class="mi">180</span><span class="p">:</span>
+            <span class="n">rotation_angle</span> <span class="o">-=</span> <span class="mi">360</span>
+        <span class="k">elif</span> <span class="n">rotation_angle</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">180</span><span class="p">:</span>
+            <span class="n">rotation_angle</span> <span class="o">+=</span> <span class="mi">360</span>
+        <span class="c1"># command left rotation</span>
+        <span class="k">if</span> <span class="n">rotation_angle</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rotate_left</span><span class="p">(</span><span class="n">rotation_angle</span><span class="p">,</span> <span class="n">ang_speed</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="c1"># command right rotation</span>
+        <span class="k">elif</span> <span class="n">rotation_angle</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rotate_right</span><span class="p">(</span><span class="o">-</span><span class="n">rotation_angle</span><span class="p">,</span> <span class="n">ang_speed</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span></div>
+        
+<div class="viewcode-block" id="Motion.arc_forward"><a class="viewcode-back" href="../motion.html#motion.Motion.arc_forward">[docs]</a>    <span class="k">def</span> <span class="nf">arc_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">arc_length</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">arc_angle</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">sense</span><span class="o">=</span><span class="s1">&#39;counterclockwise&#39;</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Commands a forward (or reverse) arc path with constant speed.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        speed : int or float</span>
+<span class="sd">            The desired speed in cm/s. Range from 5 to 30 cm/s.</span>
+<span class="sd">        radius : int or float</span>
+<span class="sd">            The desired arc radius in cm. Must be positive. Minimum</span>
+<span class="sd">            radius is 0.5 cm.</span>
+<span class="sd">        arc_length : int or float, default=0</span>
+<span class="sd">            The desired arc length to travel in cm. The default of zero</span>
+<span class="sd">            commands a continuous arc or allows arc angle to be defined.</span>
+<span class="sd">            Must be positive for discrete arc motion.</span>
+<span class="sd">        arc_angle : int or float, default=0, maximum 720</span>
+<span class="sd">            The desired arc angle to travel in degrees. The default of</span>
+<span class="sd">            zero commands a continuous arc or allows arc length to be</span>
+<span class="sd">            defined. Must be positive for discrete arc motion.</span>
+<span class="sd">        sense : {&#39;counterclockwise&#39;, &#39;clockwise&#39;}</span>
+<span class="sd">            The rotation sense for robot to rotate.</span>
+<span class="sd">        protect : bool, default=False</span>
+<span class="sd">            Prevents interruption by another motion command.</span>
+<span class="sd">        queue : bool, default=False</span>
+<span class="sd">            Adds motion call to a queue for a sequence.</span>
+<span class="sd">        reverse : bool, default=False</span>
+<span class="sd">            Reverses the direction</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Uses a linear velocity profile to approximate constant</span>
+<span class="sd">        acceleration by ramping velocity up and down at the start and</span>
+<span class="sd">        stop, which produces smoother motion with less wheel slippage.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Command continuous arc with a 15 cm radius at a speed of 10 cm/s</span>
+<span class="sd">        and pause after 1 second.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.arc_forward(10, 15)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(1)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.pause()</span>
+
+<span class="sd">        Move an arc length of 10 cm with a 20 cm radius at a speed of</span>
+<span class="sd">        5 cm/s with a clockwise sense.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.arc_forward(5, 20, arc_length=10, sense=&#39;clockwise&#39;)</span>
+
+<span class="sd">        Store moves in the queue to run a sequence. Note: protect is set</span>
+<span class="sd">        to True when using a queue to prevent later queue entries from</span>
+<span class="sd">        interrupting the earlier ones.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.arc_forward(10, 5, arc_angle=45, queue=True)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.arc_reverse(10, 5, arc_angle=45, queue=True)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.arc_forward(15, 25, arc_angle=30, sense=&#39;clockwise&#39;, queue=True)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.arc_reverse(15, 25, arc_angle=30, sense=&#39;clockwise&#39;, queue=True)</span>
+
+<span class="sd">        An unprotected move can be interrupted at any time with a new</span>
+<span class="sd">        motion call. The control loop handles the smooth transitions.</span>
+<span class="sd">        The following example calls arc motion and then reverse motion</span>
+<span class="sd">        without stopping first.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.arc_forward(10, 15, sense=&#39;clockwise&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(1)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.reverse(20, 10)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_arguments</span><span class="p">(</span><span class="s1">&#39;arc&#39;</span><span class="p">,</span> <span class="n">speed</span><span class="o">=</span><span class="n">speed</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span>
+                                          <span class="n">arc_length</span><span class="o">=</span><span class="n">arc_length</span><span class="p">,</span>
+                                          <span class="n">arc_angle</span><span class="o">=</span><span class="n">arc_angle</span><span class="p">,</span> <span class="n">sense</span><span class="o">=</span><span class="n">sense</span><span class="p">,</span>
+                                          <span class="n">protect</span><span class="o">=</span><span class="n">protect</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="n">queue</span><span class="p">,</span>
+                                          <span class="n">reverse</span><span class="o">=</span><span class="n">reverse</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: invalid argument to .arc_forward() method&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="c1"># do nothing if motion is protected and the command is not queued</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_protect</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">queue</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="c1"># limit velocity as needed to avoid exceeding SPD_MAX on outer wheel</span>
+        <span class="k">if</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="p">((</span><span class="n">cnst</span><span class="o">.</span><span class="n">WHEEL_SPAN</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">radius</span><span class="p">))</span> <span class="o">*</span> <span class="n">speed</span> <span class="o">&gt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">SPD_MAX</span><span class="p">:</span>
+            <span class="n">speed</span> <span class="o">=</span> <span class="n">cnst</span><span class="o">.</span><span class="n">SPD_MAX</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="p">((</span><span class="n">cnst</span><span class="o">.</span><span class="n">WHEEL_SPAN</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">radius</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">speed</span><span class="o">/</span><span class="n">radius</span> <span class="o">&gt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MAX</span><span class="p">:</span>
+                <span class="n">speed</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MAX</span>
+        <span class="c1"># calculate arc length from desired arc angle</span>
+        <span class="k">if</span> <span class="n">arc_angle</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">arc_length</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">arc_angle</span><span class="o">*</span><span class="p">(</span><span class="n">pi</span><span class="o">/</span><span class="mi">180</span><span class="p">)</span>
+        <span class="c1"># change signs for reverse direction</span>
+        <span class="k">if</span> <span class="n">reverse</span><span class="p">:</span>
+            <span class="n">speed</span> <span class="o">=</span> <span class="o">-</span><span class="n">speed</span>
+            <span class="n">arc_length</span> <span class="o">=</span> <span class="o">-</span><span class="n">arc_length</span>
+        <span class="c1"># stored motion in queue if requested</span>
+        <span class="k">if</span> <span class="n">queue</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_queue</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;arc&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span>
+                                             <span class="n">arc_length</span><span class="p">,</span> <span class="n">sense</span><span class="p">])</span>
+            <span class="c1"># ensure motion is protected before returning</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_protect</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">return</span>
+        <span class="c1"># store command in motion_curr attribute</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># assign the command to &#39;motion_call&#39; to test for repeats</span>
+            <span class="n">motion_call</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;arc&#39;</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">arc_length</span><span class="p">,</span> <span class="n">sense</span><span class="p">]</span>
+            <span class="c1"># return without calling motion if a repeat is being requested</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_repeat_call</span><span class="p">(</span><span class="n">motion_call</span><span class="p">):</span>
+                <span class="k">return</span>
+            <span class="c1"># check for running motion and ramp it down if needed</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_state</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="s1">&#39;pause&#39;</span><span class="p">,</span> <span class="s1">&#39;steer&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+            <span class="c1"># store command in motion_curr attribute</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_curr</span> <span class="o">=</span> <span class="n">motion_call</span>
+            <span class="c1"># clear out old queue if calling new non-sequence moves</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_queue</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="c1"># ensure motion has started before returning</span>
+            <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_state</span> <span class="o">!=</span> <span class="s1">&#39;arc&#39;</span><span class="p">:</span>
+                <span class="k">continue</span></div>
+
+<div class="viewcode-block" id="Motion.arc_reverse"><a class="viewcode-back" href="../motion.html#motion.Motion.arc_reverse">[docs]</a>    <span class="k">def</span> <span class="nf">arc_reverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">arc_length</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">arc_angle</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">sense</span><span class="o">=</span><span class="s1">&#39;counterclockwise&#39;</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Commands a reverse arc path with constant speed.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        speed : int or float</span>
+<span class="sd">            The desired speed in cm/s. Range from 5 to 30 cm/s.</span>
+<span class="sd">        radius : int or float</span>
+<span class="sd">            The desired arc radius in cm. Must be positive. Minimum</span>
+<span class="sd">            radius is 0.5 cm.</span>
+<span class="sd">        arc_length : int or float, default=0</span>
+<span class="sd">            The desired arc length to travel in cm. The default of zero</span>
+<span class="sd">            commands a continuous arc or allows arc angle to be defined.</span>
+<span class="sd">            Must be positive for discrete arc motion.</span>
+<span class="sd">        arc_angle : int or float, default=0, maximum 720</span>
+<span class="sd">            The desired arc angle to travel in degrees. The default of</span>
+<span class="sd">            zero commands a continuous arc or allows arc length to be</span>
+<span class="sd">            defined. Must be positive for discrete arc motion.</span>
+<span class="sd">        sense : {&#39;counterclockwise&#39;, &#39;clockwise&#39;}</span>
+<span class="sd">            The rotation sense for robot to rotate.</span>
+<span class="sd">        protect : bool, default=False</span>
+<span class="sd">            Prevents interruption by another motion command.</span>
+<span class="sd">        queue : bool, default=False</span>
+<span class="sd">            Adds motion call to a queue for a sequence.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        A reverse arc path is generated using the .arc_forward() method</span>
+<span class="sd">        with the reverse parameter set to True.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">arc_forward</span><span class="p">(</span><span class="n">speed</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">arc_length</span><span class="p">,</span> <span class="n">arc_angle</span><span class="p">,</span> <span class="n">sense</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span>
+                         <span class="n">queue</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Motion.steer_left"><a class="viewcode-back" href="../motion.html#motion.Motion.steer_left">[docs]</a>    <span class="k">def</span> <span class="nf">steer_left</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">arc_angle</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Steers left in an arc path at a discrete angle if already in motion.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        radius : int or float</span>
+<span class="sd">            The desired arc radius in cm. Must be positive. Minimum</span>
+<span class="sd">            radius is 0.5 cm.</span>
+<span class="sd">        arc_angle : int or float, default=0, maximum 360</span>
+<span class="sd">            The desired arc angle in degrees. The default of zero</span>
+<span class="sd">            commands a continuous steering arc. Must be positive for</span>
+<span class="sd">            discrete steering motion.</span>
+<span class="sd">        protect : bool, default=False</span>
+<span class="sd">            Prevents interruption by another motion command.</span>
+<span class="sd">        right : bool, default=False</span>
+<span class="sd">            Commands right steering instead of left (changes sense).</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Uses the .arc_forward() method to create a an arc path for</span>
+<span class="sd">        smooth steering without stopping. This method only works when</span>
+<span class="sd">        the robot is already moving in either a linear or arc path.</span>
+<span class="sd">        After turning through the specified angle, the robot resumes its</span>
+<span class="sd">        previous motion path. If no arc_angle is given (i.e., set to</span>
+<span class="sd">        default of zero), the steering motion is a continuous arc and</span>
+<span class="sd">        the previous motion cannot be resumed.</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        Import time and create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; import time</span>
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Start by commanding forward motion at 5 cm/s. Then steer left</span>
+<span class="sd">        30 degrees and back to the right 210 degrees to loop around.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.forward(5)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(1)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.steer_left(25, 30)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(4)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.steer_right(5, 210)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(6)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.pause()</span>
+<span class="sd">        </span>
+<span class="sd">        Start by commanding arc_forward motion at 5 cm/s with a radius</span>
+<span class="sd">        of 25 cm. Then steer right continuously with a 5 cm radius. You</span>
+<span class="sd">        must pause or command new motion to end continuous steering.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.move.arc_forward(5, 25)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(2)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.steer_right(5)</span>
+<span class="sd">        &gt;&gt;&gt; time.sleep(2)</span>
+<span class="sd">        &gt;&gt;&gt; robot.move.pause()</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_arguments</span><span class="p">(</span><span class="s1">&#39;steer&#39;</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">,</span>
+                                          <span class="n">arc_angle</span><span class="o">=</span><span class="n">arc_angle</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="n">protect</span><span class="p">,</span>
+                                          <span class="n">right</span><span class="o">=</span><span class="n">right</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: invalid argument to .steer_left() method&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="c1"># do nothing if robot is not in linear or arc motion or is ramping down</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_protect</span>
+                <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_state</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="s1">&#39;rotate&#39;</span><span class="p">,</span> <span class="s1">&#39;steer&#39;</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_velo_set</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="c1"># store previous motion to resume after steering</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_resume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_prev</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>        
+        <span class="c1"># calculate desired robot steering angle (rad)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_velo_set</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">arc_length</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">arc_angle</span><span class="o">*</span><span class="p">(</span><span class="n">pi</span><span class="o">/</span><span class="mi">180</span><span class="p">)</span>
+            <span class="n">reverse</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">arc_length</span> <span class="o">=</span> <span class="o">-</span><span class="n">radius</span> <span class="o">*</span> <span class="n">arc_angle</span><span class="o">*</span><span class="p">(</span><span class="n">pi</span><span class="o">/</span><span class="mi">180</span><span class="p">)</span>
+            <span class="n">reverse</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="c1"># set the arc radius and rotation sense for steering</span>
+        <span class="k">if</span> <span class="n">right</span><span class="p">:</span>
+            <span class="n">sense</span> <span class="o">=</span> <span class="s1">&#39;clockwise&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sense</span> <span class="o">=</span> <span class="s1">&#39;counterclockwise&#39;</span>
+        <span class="c1"># assign the command to &#39;motion_call&#39; to test for repeats</span>
+        <span class="n">motion_call</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;steer&#39;</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_velo_set</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span>
+                       <span class="n">arc_length</span><span class="p">,</span> <span class="n">sense</span><span class="p">]</span>
+        <span class="c1"># return without calling motion if a repeat is being requested</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_repeat_call</span><span class="p">(</span><span class="n">motion_call</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="c1"># store command in motion_curr attribute</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_curr</span> <span class="o">=</span> <span class="n">motion_call</span>
+        <span class="c1"># ensure motion has started before returning</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_state</span> <span class="o">!=</span> <span class="s1">&#39;steer&#39;</span><span class="p">:</span>
+            <span class="k">continue</span></div>
+
+<div class="viewcode-block" id="Motion.steer_right"><a class="viewcode-back" href="../motion.html#motion.Motion.steer_right">[docs]</a>    <span class="k">def</span> <span class="nf">steer_right</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">arc_angle</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Steers right in an arc path at a discrete angle if already in motion.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        radius : int or float</span>
+<span class="sd">            The desired arc radius in cm. Must be positive. Minimum</span>
+<span class="sd">            radius is 0.5 cm.</span>
+<span class="sd">        arc_angle : int or float, default=0, maximum 720</span>
+<span class="sd">            The desired arc angle in degrees. The default of zero</span>
+<span class="sd">            commands a continuous steering arc. Must be positive for</span>
+<span class="sd">            discrete steering motion.</span>
+<span class="sd">        protect : bool, default=False</span>
+<span class="sd">            Prevents interruption by another motion command.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Right steering motion is generated using the .steer_left()</span>
+<span class="sd">        method with the right parameter set to True.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">steer_left</span><span class="p">(</span><span class="n">radius</span><span class="p">,</span> <span class="n">arc_angle</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_valid_arguments</span><span class="p">(</span><span class="n">motion_type</span><span class="p">,</span> <span class="n">speed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                         <span class="n">ang_speed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                         <span class="n">arc_length</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">arc_angle</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sense</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                         <span class="n">protect</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                         <span class="n">heading</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Checks for valid arguments from user calls.</span>
+
+<span class="sd">        Accepts all the parameters to .forward(), .reverse(),</span>
+<span class="sd">        .rotate_left(), .rotate_right(), .arc_forward(), .arc_reverse(),</span>
+<span class="sd">        .steer_left(), and .steer_right() methods.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># general checks for most motion commands</span>
+        <span class="k">if</span> <span class="n">motion_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="s1">&#39;arc&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">speed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: speed must be set&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">speed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">speed</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: speed must be a numeric value&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">speed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">speed</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: speed must be positive&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">speed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">speed</span> <span class="o">&gt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">SPD_MAX</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: maximum speed of robot is: </span><span class="si">%.2f</span><span class="s1"> cm/s&#39;</span> <span class="o">%</span><span class="n">cnst</span><span class="o">.</span><span class="n">SPD_MAX</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">speed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">speed</span> <span class="o">&lt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">SPD_MIN</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: minimum speed of robot is: </span><span class="si">%.2f</span><span class="s1"> cm/s&#39;</span> <span class="o">%</span><span class="n">cnst</span><span class="o">.</span><span class="n">SPD_MIN</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">distance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance must be a numeric value&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">distance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">distance</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance must be positive&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">motion_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;steer&#39;</span><span class="p">,</span> <span class="s1">&#39;heading&#39;</span><span class="p">)</span>
+              <span class="ow">and</span> <span class="n">protect</span> <span class="o">!=</span> <span class="kc">True</span> <span class="ow">and</span> <span class="n">protect</span> <span class="o">!=</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: protect must be a boolean value True or False&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">motion_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;steer&#39;</span><span class="p">,</span> <span class="s1">&#39;heading&#39;</span><span class="p">)</span>
+              <span class="ow">and</span> <span class="n">queue</span> <span class="o">!=</span> <span class="kc">True</span> <span class="ow">and</span> <span class="n">queue</span> <span class="o">!=</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: queue must be a boolean value True or False&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">distance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">queue</span> <span class="ow">and</span> <span class="n">distance</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: only discrete moves in queue, set a distance&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">motion_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="s1">&#39;arc&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">reverse</span> <span class="o">!=</span> <span class="kc">True</span>
+                                                   <span class="ow">and</span> <span class="n">reverse</span> <span class="o">!=</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: reverse must be a boolean value True or False&#39;</span><span class="p">)</span>
+        <span class="c1"># specific checks for rotate motion</span>
+        <span class="k">elif</span> <span class="n">ang_speed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ang_speed</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: ang_speed must be a numeric value&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">ang_speed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ang_speed</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: ang_speed must be positive&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">ang_speed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ang_speed</span> <span class="o">&gt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MAX</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: maximum ang_speed is: </span><span class="si">%.2f</span><span class="s1"> deg/s&#39;</span> <span class="o">%</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MAX</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">ang_speed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ang_speed</span> <span class="o">&lt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MIN</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: minimum ang_speed is: </span><span class="si">%.2f</span><span class="s1"> deg/s&#39;</span> <span class="o">%</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MIN</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">angle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle must be a numeric value&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">angle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">angle</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle must be positive&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">angle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">angle</span> <span class="o">&gt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ANG_MAX</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: maximum rotation angle is </span><span class="si">%d</span><span class="s1"> degrees&#39;</span> <span class="o">%</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_MAX</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">motion_type</span> <span class="o">==</span> <span class="s1">&#39;rotate&#39;</span> <span class="ow">and</span> <span class="n">right</span> <span class="o">!=</span> <span class="kc">True</span> <span class="ow">and</span> <span class="n">right</span> <span class="o">!=</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: right must be a boolean value True or False&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">motion_type</span> <span class="o">==</span> <span class="s1">&#39;heading&#39;</span> <span class="ow">and</span> <span class="n">heading</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: desired heading must be set&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">heading</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">heading</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: desired heading must be a numeric value&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">heading</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="o">-</span><span class="mi">180</span> <span class="o">&lt;=</span> <span class="n">heading</span> <span class="o">&lt;=</span> <span class="mi">180</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: desired heading must be in the range -180 to 180&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">direction</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">direction</span> <span class="o">!=</span> <span class="s1">&#39;left&#39;</span>
+                                        <span class="ow">and</span> <span class="n">direction</span> <span class="o">!=</span> <span class="s1">&#39;right&#39;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error: rotation direction must be &#39;left&#39;, &#39;right&#39;, or None&quot;</span><span class="p">)</span>
+        <span class="c1"># specific checks for arc motion</span>
+        <span class="k">elif</span> <span class="n">motion_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;arc&#39;</span> <span class="ow">or</span> <span class="s1">&#39;steer&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">radius</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: radius must be set&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">radius</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">radius</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: radius must be a numeric value&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">radius</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">radius</span> <span class="o">&lt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">MIN_RADIUS</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: minimum radius is </span><span class="si">%.1f</span><span class="s1"> cm&#39;</span> <span class="o">%</span><span class="n">cnst</span><span class="o">.</span><span class="n">MIN_RADIUS</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">arc_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arc_length</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span>
+                                                                    <span class="nb">float</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: arc_length must be a numeric value&#39;</span><span class="p">)</span>        
+        <span class="k">elif</span> <span class="n">arc_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">arc_length</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: arc_length must be positive&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">arc_angle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arc_angle</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: arc_angle must be a numeric value&#39;</span><span class="p">)</span>        
+        <span class="k">elif</span> <span class="n">arc_angle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&gt;</span> <span class="n">arc_angle</span> <span class="o">&gt;</span> <span class="n">cnst</span><span class="o">.</span><span class="n">ANG_MAX</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: arc_angle must be positive and &lt;= </span><span class="si">%d</span><span class="s1"> degrees&#39;</span> <span class="o">%</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_MAX</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">motion_type</span> <span class="o">==</span> <span class="s1">&#39;arc&#39;</span> <span class="ow">and</span> <span class="p">(</span><span class="n">sense</span> <span class="o">!=</span> <span class="s1">&#39;clockwise&#39;</span>
+                                       <span class="ow">and</span> <span class="n">sense</span> <span class="o">!=</span> <span class="s1">&#39;counterclockwise&#39;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error: sense must be &#39;clockwise&#39; or &#39;counterclockwise&#39;&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">motion_type</span> <span class="o">==</span> <span class="s1">&#39;arc&#39;</span> <span class="ow">and</span> <span class="n">arc_length</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">arc_angle</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: arc_length and arc_angle cannot both be set&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">queue</span> <span class="ow">and</span> <span class="n">arc_length</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">arc_angle</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: set value of arc_length or arc_angle for queue&#39;</span><span class="p">)</span>
+        <span class="c1"># specific check for steer motion</span>
+        <span class="k">elif</span> <span class="n">motion_type</span> <span class="o">==</span> <span class="s1">&#39;steer&#39;</span> <span class="ow">and</span> <span class="n">right</span> <span class="o">!=</span> <span class="kc">True</span> <span class="ow">and</span> <span class="n">right</span> <span class="o">!=</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: right must be a boolean value True or False&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># if no invalid arguments are found, return True</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="c1"># if an invalid argument is found, return False</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">_is_repeat_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">motion_call</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Checks for repeat user calls with the same arguments.</span>
+
+<span class="sd">        Used to prevent repeat motion calls from sending commands to the</span>
+<span class="sd">        control loop where they will needlessly trigger the an update in</span>
+<span class="sd">        state.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># wait to avoid testing during update of control loop state</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_curr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;ready&#39;</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="c1"># once update is complete, check for repeat motion call</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_state</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="s1">&#39;pause&#39;</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">motion_call</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_prev</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Turner Howard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

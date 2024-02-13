@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>outputs module &mdash; Physics 360 PiBOT 1.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="sensors module" href="sensors.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Physics 360 PiBOT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">lib</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="pibot.html">pibot module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="motion.html">motion module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sensors.html">sensors module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">outputs module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Physics 360 PiBOT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">lib</a></li>
+      <li class="breadcrumb-item active">outputs module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/outputs.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-outputs">
+<span id="outputs-module"></span><h1>outputs module<a class="headerlink" href="#module-outputs" title="Permalink to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="outputs.Buzzer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">outputs.</span></span><span class="sig-name descname"><span class="pre">Buzzer</span></span><a class="reference internal" href="_modules/outputs.html#Buzzer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#outputs.Buzzer" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Generates sound from built-in buzzer on MAKER-PI-RP2040 board.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="outputs.Buzzer.on">
+<span class="sig-name descname"><span class="pre">on</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/outputs.html#Buzzer.on"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#outputs.Buzzer.on" title="Permalink to this definition"></a></dt>
+<dd><p>Turns on the buzzer at desired frequency and volume.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>freq</strong> (<em>int</em><em>, </em><em>default=1000</em>) – Frequency of the tone generated. Minimum is 8 Hz.</p></li>
+<li><p><strong>level</strong> (<em>int</em><em>, </em><em>default=3</em>) – Volume of the buzzer with levels 1-5, 5 being the loudest.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The audible volume of the buzzer is highly dependent on the
+frequency and the pulse width. Sometimes increasing the level
+(i.e., pulse width) does not generate a louder sound but can
+affect the timbre.</p>
+<p class="rubric">Examples</p>
+<p>Import time and create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">time</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Turn the buzzer on for three seconds and then turn it off.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">buzzer</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="n">freq</span><span class="o">=</span><span class="mi">440</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">buzzer</span><span class="o">.</span><span class="n">off</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="outputs.Buzzer.off">
+<span class="sig-name descname"><span class="pre">off</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/outputs.html#Buzzer.off"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#outputs.Buzzer.off" title="Permalink to this definition"></a></dt>
+<dd><p>Turns off the buzzer.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="outputs.Buzzer.pulse">
+<span class="sig-name descname"><span class="pre">pulse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">on_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bursts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/outputs.html#Buzzer.pulse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#outputs.Buzzer.pulse" title="Permalink to this definition"></a></dt>
+<dd><p>Generates single, multiple, or continuous buzzer pulses.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>on_time</strong> (<em>int</em><em>, </em><em>default=100</em>) – Time in ms to turn on the buzzer. Value must be an integer
+multiple of 10 ms to match the control loop step time and no
+larger than 5000 ms.</p></li>
+<li><p><strong>bursts</strong> (<em>int</em><em>, </em><em>default=1</em>) – Number of pulses to sound. Duty cycle is 50% (i.e., off time
+is equal to on time. Use -1 to generate continuous pulses.</p></li>
+<li><p><strong>freq</strong> (<em>int</em><em>, </em><em>default=1000</em>) – Frequency of the tone generated. Minimum is 8 Hz.</p></li>
+<li><p><strong>level</strong> (<em>int</em><em>, </em><em>default=3</em>) – Volume of the buzzer with levels 1-5, 5 being the loudest.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This pulse function works in conjunction with the Control class
+to turn the buzzer on and off in the robot control loop that
+runs on the second core of the RP2040.</p>
+<p class="rubric">Examples</p>
+<p>Import time and create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">time</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Create continuous pulses and reset after five seconds to cancel.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">buzzer</span><span class="o">.</span><span class="n">pulse</span><span class="p">(</span><span class="n">on_time</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span> <span class="n">bursts</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="mi">440</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">buzzer</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>A discrete number of bursts does not require a reset to cancel.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">buzzer</span><span class="o">.</span><span class="n">pulse</span><span class="p">(</span><span class="n">bursts</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="outputs.Buzzer.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/outputs.html#Buzzer.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#outputs.Buzzer.reset" title="Permalink to this definition"></a></dt>
+<dd><p>Clears buzzer pulses and reinitializes attributes.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="outputs.LEDs">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">outputs.</span></span><span class="sig-name descname"><span class="pre">LEDs</span></span><a class="reference internal" href="_modules/outputs.html#LEDs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#outputs.LEDs" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Controls the RGB neopixel LEDs on the MAKER-PI-RP2040 board.</p>
+<p>Color constants are provided to allow for easier setting of common
+colors. The constants are 3-tuples of RGB values from 0 to 255.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.AMBER">
+<span class="sig-name descname"><span class="pre">AMBER</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(120,</span> <span class="pre">50,</span> <span class="pre">0)</span></em><a class="headerlink" href="#outputs.LEDs.AMBER" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.AQUA">
+<span class="sig-name descname"><span class="pre">AQUA</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(20,</span> <span class="pre">70,</span> <span class="pre">70)</span></em><a class="headerlink" href="#outputs.LEDs.AQUA" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.RED">
+<span class="sig-name descname"><span class="pre">RED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(128,</span> <span class="pre">0,</span> <span class="pre">0)</span></em><a class="headerlink" href="#outputs.LEDs.RED" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.GOLD">
+<span class="sig-name descname"><span class="pre">GOLD</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(64,</span> <span class="pre">55,</span> <span class="pre">10)</span></em><a class="headerlink" href="#outputs.LEDs.GOLD" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.JADE">
+<span class="sig-name descname"><span class="pre">JADE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(0,</span> <span class="pre">120,</span> <span class="pre">25)</span></em><a class="headerlink" href="#outputs.LEDs.JADE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.YELLOW">
+<span class="sig-name descname"><span class="pre">YELLOW</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(110,</span> <span class="pre">80,</span> <span class="pre">0)</span></em><a class="headerlink" href="#outputs.LEDs.YELLOW" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.GREEN">
+<span class="sig-name descname"><span class="pre">GREEN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(0,</span> <span class="pre">128,</span> <span class="pre">0)</span></em><a class="headerlink" href="#outputs.LEDs.GREEN" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.CYAN">
+<span class="sig-name descname"><span class="pre">CYAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(0,</span> <span class="pre">64,</span> <span class="pre">64)</span></em><a class="headerlink" href="#outputs.LEDs.CYAN" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.BLUE">
+<span class="sig-name descname"><span class="pre">BLUE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">128)</span></em><a class="headerlink" href="#outputs.LEDs.BLUE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.PURPLE">
+<span class="sig-name descname"><span class="pre">PURPLE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(80,</span> <span class="pre">0,</span> <span class="pre">64)</span></em><a class="headerlink" href="#outputs.LEDs.PURPLE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.MAGENTA">
+<span class="sig-name descname"><span class="pre">MAGENTA</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(128,</span> <span class="pre">0,</span> <span class="pre">20)</span></em><a class="headerlink" href="#outputs.LEDs.MAGENTA" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.WHITE">
+<span class="sig-name descname"><span class="pre">WHITE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(64,</span> <span class="pre">64,</span> <span class="pre">64)</span></em><a class="headerlink" href="#outputs.LEDs.WHITE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.ORANGE">
+<span class="sig-name descname"><span class="pre">ORANGE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(120,</span> <span class="pre">20,</span> <span class="pre">0)</span></em><a class="headerlink" href="#outputs.LEDs.ORANGE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.PINK">
+<span class="sig-name descname"><span class="pre">PINK</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(64,</span> <span class="pre">25,</span> <span class="pre">25)</span></em><a class="headerlink" href="#outputs.LEDs.PINK" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="outputs.LEDs.TEAL">
+<span class="sig-name descname"><span class="pre">TEAL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(0,</span> <span class="pre">108,</span> <span class="pre">54)</span></em><a class="headerlink" href="#outputs.LEDs.TEAL" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="outputs.LEDs.on">
+<span class="sig-name descname"><span class="pre">on</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/outputs.html#LEDs.on"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#outputs.LEDs.on" title="Permalink to this definition"></a></dt>
+<dd><p>Turns on left, right, or both LEDs to specified color.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>color</strong> (<em>3-tuple</em>) – Color (and brightness) set with RGB values from 0 to 255.</p></li>
+<li><p><strong>side</strong> (<em>{'left'</em><em>, </em><em>'right'}</em><em>, </em><em>default=None</em>) – The side to illuminate. Default is None for both sides.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Pass one of the colors in the table or use a custom 3-tuple to
+select your own color and brightness.</p>
+<p class="rubric">Examples</p>
+<p>Import time and create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">time</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">robot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Turn on both LEDs with the color red for three seconds.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">RED</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">off</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Use the optional side parameter to turn on only one LED.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">AMBER</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">TEAL</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">off</span><span class="p">(</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">off</span><span class="p">(</span><span class="s1">&#39;right&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="outputs.LEDs.off">
+<span class="sig-name descname"><span class="pre">off</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">side</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/outputs.html#LEDs.off"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#outputs.LEDs.off" title="Permalink to this definition"></a></dt>
+<dd><p>Turns off left, right, or both LEDs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>side</strong> (<em>{'left'</em><em>, </em><em>'right'}</em><em>, </em><em>default=None</em>) – The side to turn off. Default is None for both sides.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="outputs.LEDs.pulse">
+<span class="sig-name descname"><span class="pre">pulse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bursts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fade</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/outputs.html#LEDs.pulse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#outputs.LEDs.pulse" title="Permalink to this definition"></a></dt>
+<dd><p>Generates single, multiple, or continuous pulses on LEDs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>color</strong> (<em>3-tuple</em>) – Color (and brightness) set with RGB values from 0 to 255.</p></li>
+<li><p><strong>on_time</strong> (<em>int</em><em>, </em><em>default=100</em>) – Time in ms to turn on the buzzer. Value must be an integer
+multiple of 10 ms to match the control loop step time and no
+larger than 5000 ms.</p></li>
+<li><p><strong>bursts</strong> (<em>int</em><em>, </em><em>default=1</em>) – Number of pulses on LED. Duty cycle is 50% (i.e., off time
+is equal to on time. Use -1 to generate continuous pulses.</p></li>
+<li><p><strong>side</strong> (<em>{'left'</em><em>, </em><em>'right'}</em><em>, </em><em>default=None</em>) – The side to pulse. Default is None for both sides.</p></li>
+<li><p><strong>fade</strong> (<em>{True}</em><em>, </em><em>default=None</em>) – Ramps the LED brightness up and down to create fade effect.
+Default is None for instantaneous illumination.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Pass one of the colors in the table or use a custom 3-tuple to
+select your own color and brightness.</p>
+<p class="rubric">Examples</p>
+<p>Import time and create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">time</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">robot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Create continuous pulses and reset after five seconds to cancel.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">pulse</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span> <span class="n">on_time</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span> <span class="n">bursts</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Creates three fading pulses with no need to reset.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">pulse</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">AMBER</span><span class="p">,</span> <span class="n">on_time</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">bursts</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">fade</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">pulse</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">TEAL</span><span class="p">,</span> <span class="n">on_time</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="n">bursts</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">fade</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Pulses can also be called with the LEDs on to create dual color.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">BLUE</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">pulse</span><span class="p">(</span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span> <span class="n">on_time</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">bursts</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">leds</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="outputs.LEDs.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/outputs.html#LEDs.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#outputs.LEDs.reset" title="Permalink to this definition"></a></dt>
+<dd><p>Clears LED pulses and reinitializes attributes.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="sensors.html" class="btn btn-neutral float-left" title="sensors module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Turner Howard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
