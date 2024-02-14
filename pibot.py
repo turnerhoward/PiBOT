@@ -345,9 +345,6 @@ class PiBOT:
         # ensure the starting angle is positive
         if start_angle < 0:
             start_angle += 360
-        # adjust the start angle for negative scan angle
-        if angle < 0:
-            start_angle += abs(angle)
         # clear lidar data before a new scan
         self.lidar_dist.clear()
         self.lidar_angle.clear()
@@ -364,15 +361,16 @@ class PiBOT:
                and abs(increment*i) <= abs(angle)):
             # adjust the desired angle for the next increment
             desired_heading = start_angle + increment*i
-            # calculate the number of wraps to add to the heading angle
-            wraps = desired_heading//360
             # get the current heading angle
             current_heading = self.heading
             # ensure the current heading angle is positive
             if current_heading < 0:
                 current_heading += 360
             # add the necessary wraps to the current heading angle
-            current_heading += 360*wraps
+            while current_heading > desired_heading + 180:
+                current_heading -= 360
+            while current_heading < desired_heading - 180:
+                current_heading += 360
             # store data when the current heading reaches the desired heading
             if angle > 0 and current_heading > desired_heading:
                 self.lidar_dist.append(self.lidar.read())
@@ -563,7 +561,7 @@ class PiBOT:
         min_index = distance.index(min(distance))
         return angle[min_index], distance[min_index]
 
-    def detect_objects(self, angle, distance, max_size=50):
+    def detect_objects(self, angle, distance, max_size=50, filename=None):
         """Attempts to detect one or more objects in the foreground.
 
         Parameters
@@ -574,6 +572,8 @@ class PiBOT:
             The lidar distance data
         max_size : int, float, default=50
             Maximum width of an object in cm to detect.
+        filename : str, optional
+            Name of the file to save the object data to a CSV.
 
         Returns
         -------
@@ -664,8 +664,12 @@ class PiBOT:
             return print('Error: max_size must be a numeric value')
         if max_size < 0:
             return print('Error: max_size cannot be less than zero')
+        if filename and not isinstance(filename, str):
+            return print('Error: filename must be a string')
         # initialize variables
         BEAM_ANGLE = 5 # approximate width of lidar beam in degrees
+        WIDTH_ADJ = 25 # the width at which to start adjusting min distance
+        MIN_ADJ = 0.15 # the min distance adjustment factor for narrow objects
         object_angle = []
         object_distance = []
         object_width = []
@@ -693,15 +697,15 @@ class PiBOT:
                     leading_edge_angle = ang_no_wrap[leading_edge]
                     trailing_edge_angle = ang_no_wrap[trailing_edge]
                     center_angle = (leading_edge_angle + trailing_edge_angle)/2
-                    # adjust for +/- 180 wrapped values
-                    if abs(center_angle) > 180:
+                    # adjust for center_angle values out of +/- 180 range
+                    while abs(center_angle) > 180:
                         if center_angle < 0:
                             center_angle += 360
                         else:
                             center_angle -= 360
                     included_angle = abs(trailing_edge_angle
                                          - leading_edge_angle)
-                    # exclude any included angles greater that resonable max
+                    # exclude any included angles greater than reasonable max
                     if included_angle > 150:
                         break
                     # adjust for beam width
@@ -715,6 +719,10 @@ class PiBOT:
                     min_distance = distance[min_index]
                     # calculate approximate object width
                     width = 2 * (min_distance * tan(radians(included_angle/2)))
+                    # adjust minimum object distance for narrow objects
+                    if width < WIDTH_ADJ and min_distance > 50:
+                        min_distance = min_distance * (1 + MIN_ADJ
+                                                       * (1-width/WIDTH_ADJ))
                     # ensure object width doesn't exceed max_width and append
                     if width <= max_size:
                         # add object data to the corresponding lists
@@ -730,6 +738,16 @@ class PiBOT:
                 # otherwise toss out the trailing edge and keep checking
                 else:
                     trailing_edge = trailing_edges.pop(0)
+        # create a CSV (comma-separated values) file and write object data
+        if filename:
+            file = open(f'{filename}.csv', 'w')
+            # add a file header
+            file.write('angle (degrees), distance (cm), width (cm)\n')
+            # write each line of data
+            for i in range(len(object_angle)):
+                file.write(f'{object_angle[i]}, {object_distance[i]},'
+                           +f' {object_width[i]}\n')
+            file.close()
         return object_angle, object_distance, object_width
 
     @staticmethod
