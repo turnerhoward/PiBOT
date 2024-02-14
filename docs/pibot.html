@@ -477,7 +477,7 @@ method using the unpacking operator (*) as shown.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pibot.PiBOT.detect_objects">
-<span class="sig-name descname"><span class="pre">detect_objects</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.detect_objects"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.detect_objects" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">detect_objects</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.detect_objects"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.detect_objects" title="Permalink to this definition"></a></dt>
 <dd><p>Attempts to detect one or more objects in the foreground.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -485,6 +485,7 @@ method using the unpacking operator (*) as shown.</p>
 <li><p><strong>angle</strong> (<em>list</em>) – The lidar angle data</p></li>
 <li><p><strong>distance</strong> (<em>list</em>) – The lidar distance data</p></li>
 <li><p><strong>max_size</strong> (<em>int</em><em>, </em><em>float</em><em>, </em><em>default=50</em>) – Maximum width of an object in cm to detect.</p></li>
+<li><p><strong>filename</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the file to save the object data to a CSV.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
