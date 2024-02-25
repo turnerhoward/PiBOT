@@ -561,7 +561,7 @@ class PiBOT:
         min_index = distance.index(min(distance))
         return angle[min_index], distance[min_index]
 
-    def detect_objects(self, angle, distance, max_size=50, filename=None):
+    def detect_objects(self, angle, distance, filename=None):
         """Attempts to detect one or more objects in the foreground.
 
         Parameters
@@ -570,8 +570,6 @@ class PiBOT:
             The lidar angle data
         distance : list
             The lidar distance data
-        max_size : int, float, default=50
-            Maximum width of an object in cm to detect.
         filename : str, optional
             Name of the file to save the object data to a CSV.
 
@@ -592,22 +590,6 @@ class PiBOT:
         representing a leading edge) and then a corresponding sharp
         increase (i.e., a step from near to far representing a trailing
         edge) are detected, an object is recorded.
-
-        The algorithm first calculates the derivative of the distance
-        with respect to angle to find points where the distance is
-        changing most rapidly. The negative and positive peaks of the
-        derivative data are recorded as possible leading and trailing
-        edges. Then the peaks are filtered to ensure they meet a minimum
-        threshold and that the derivative of the three points preceeding
-        or following the peak is fairly flat in comparision. The intent
-        of this simple filtering strategy is to find only the peaks
-        where a rapid change is occurring. Finally, the potential
-        leading and trailing edges are tested in sequence to determine
-        if there are pairs of first a leading and then a trailing edge.
-        From all pairs found, the edges are used to calculate the center
-        angle, minimum distance, and approximate width of each object,
-        which are stored in the corresponsing list. If no objects are
-        found, empty lists are returned.
 
         Important
         ---------
@@ -660,84 +642,18 @@ class PiBOT:
                          + ' with at least 3 elements')
         if not all(isinstance(x, (int, float)) for x in distance):
             return print('Error: distance values must be numeric')
-        if not isinstance(max_size, (int, float)):
-            return print('Error: max_size must be a numeric value')
-        if max_size < 0:
-            return print('Error: max_size cannot be less than zero')
         if filename and not isinstance(filename, str):
             return print('Error: filename must be a string')
         # initialize variables
-        BEAM_ANGLE = 5 # approximate width of lidar beam in degrees
-        WIDTH_ADJ = 25 # the width at which to start adjusting min distance
-        MIN_ADJ = 0.15 # the min distance adjustment factor for narrow objects
         object_angle = []
         object_distance = []
         object_width = []
-        # create a non-wrapping angle list (i.e., no +/- 180 wrap-around)
-        ang_no_wrap = self._ang_no_wrap(angle)
-        # calculate the derivative with respect to the non-wrapping angle
-        derivative = self._lidar_derivative(ang_no_wrap, distance)
-        # the peaks and possible leading and trailing edges
-        negative_peaks = self._negative_peaks(derivative)
-        positive_peaks = self._positive_peaks(derivative)
-        leading_edges = self._leading_edges(negative_peaks, derivative)
-        trailing_edges = self._trailing_edges(positive_peaks, derivative)
-        # find adjacent pairs of leading and trailing edges
-        while len(leading_edges) > 0 and len(trailing_edges) > 0:
-            # pop the first leading edge value out of the list
-            leading_edge = leading_edges.pop(0)
-            # check for corresponding trailing edges
-            while len(trailing_edges) > 0:
-                # trailing edge must be after leading and before next leading
-                if (trailing_edges[0] >= leading_edge
-                        and (len(leading_edges) == 0
-                             or trailing_edges[0] < leading_edges[0])):
-                    trailing_edge = trailing_edges.pop(0)
-                    # adjacent pair indicates object was found
-                    leading_edge_angle = ang_no_wrap[leading_edge]
-                    trailing_edge_angle = ang_no_wrap[trailing_edge]
-                    center_angle = (leading_edge_angle + trailing_edge_angle)/2
-                    # adjust for center_angle values out of +/- 180 range
-                    while abs(center_angle) > 180:
-                        if center_angle < 0:
-                            center_angle += 360
-                        else:
-                            center_angle -= 360
-                    included_angle = abs(trailing_edge_angle
-                                         - leading_edge_angle)
-                    # exclude any included angles greater than reasonable max
-                    if included_angle > 150:
-                        break
-                    # adjust for beam width
-                    if included_angle > BEAM_ANGLE:
-                        included_angle = included_angle - BEAM_ANGLE
-                    else:
-                        included_angle = 5
-                    # find the minimum object distance
-                    min_index = distance.index(min(distance[leading_edge
-                                                            :trailing_edge]))
-                    min_distance = distance[min_index]
-                    # calculate approximate object width
-                    width = 2 * (min_distance * tan(radians(included_angle/2)))
-                    # adjust minimum object distance for narrow objects
-                    if width < WIDTH_ADJ and min_distance > 50:
-                        min_distance = min_distance * (1 + MIN_ADJ
-                                                       * (1-width/WIDTH_ADJ))
-                    # ensure object width doesn't exceed max_width and append
-                    if width <= max_size:
-                        # add object data to the corresponding lists
-                        object_angle.append(center_angle)
-                        object_distance.append(min_distance)
-                        object_width.append(round(width, 1))
-                    break
-                # if trailing edge is past next leading edge, go back
-                elif (trailing_edges[0] > leading_edge
-                          and len(leading_edges) != 0
-                          and trailing_edges[0] > leading_edges[0]):
-                    break
-                # otherwise toss out the trailing edge and keep checking
-                else:
-                    trailing_edge = trailing_edges.pop(0)
+        # find objects in scan data
+        objects = self._find_objects(angle, distance)
+        for i in range(len(objects)):
+            object_angle.append(objects[i][3])
+            object_distance.append(objects[i][4])
+            object_width.append(objects[i][5])
         # create a CSV (comma-separated values) file and write object data
         if filename:
             file = open(f'{filename}.csv', 'w')
@@ -750,6 +666,113 @@ class PiBOT:
             file.close()
         return object_angle, object_distance, object_width
 
+    def _find_objects(self, angle, distance, max_angle=120, max_width=50,
+                      max_skew=0.5):
+        """Finds objects that meet angle, width, and skew criteria.
+
+        Parameters
+        ----------
+        angle : list
+            The lidar angle data
+        distance : list
+            The lidar distance data
+        max_angle : int, float, default=120
+            The maximum angle in degrees between the edges of possible
+            objects for selection as detected objects.
+        max_width : int, float, default=50
+            The maximum width in cm of possible objects for selection as
+            detected objects.
+        max_skew : int, float, default=0.5
+            The maximum percentage difference in distance between
+            adjacent edges of possible objects for selection as detected
+            objects.
+
+        Returns
+        -------
+        list of tuples
+            A list of tuples representing the detected objects. Each
+            tuple consists of 6 elements. The first three elements are
+            the indices of the leading edge, local minima, and trailing
+            edge of the objects. The last three values are the center
+            angle, distance, and width of the object.
+
+        """
+
+        # initialize object variables
+        beam_width = cnst.BEAM_ANGLE / 2
+        poss_objects = []
+        objects = []
+        # get a non-wrapping continuous angle list
+        ang_no_wrap = self._ang_no_wrap(angle)
+        # find all of the extrema and filter out the small and repeat values
+        extrema = self._extrema(distance)
+        extrema_filt = self._extrema_filt(distance, extrema)
+        minima = extrema[0]
+        minima_filt = extrema_filt[0]
+        maxima = extrema[1]
+        maxima_filt = extrema_filt[1]
+        # find possible objects that follow a max/min/max pattern
+        for i in range(len(minima_filt)):
+            for j in range(len(maxima_filt)-1):
+                if maxima_filt[j] < minima_filt[i] < maxima_filt[j+1]:
+                    poss_objects.append((maxima_filt[j], minima_filt[i],
+                                              maxima_filt[j+1]))
+        # calculate the derivative with respect to the non-wrapping angle
+        der = self._lidar_derivative(ang_no_wrap, distance)
+        # filter the possible objects
+        for i in range(len(poss_objects)):
+            # find minimum negative slope between first max and min
+            min_slope = min(der[poss_objects[i][0]:poss_objects[i][1]])
+            # find maximum positive slope between min and second max
+            max_slope = max(der[poss_objects[i][1]:poss_objects[i][2]])
+            # check for steep slopes at or exceeding threshold  
+            if (min_slope <= -cnst.SLOPE_THRESHOLD
+                    and max_slope >= cnst.SLOPE_THRESHOLD):
+                # get indices of the steep slopes
+                max_neg_slope = der.index(min_slope, poss_objects[i][0],
+                                          poss_objects[i][1]) + 1
+                max_pos_slope = der.index(max_slope, poss_objects[i][1],
+                                          poss_objects[i][2]) - 1
+                # find center angle as average angle of the steepest slopes
+                center_angle = (ang_no_wrap[max_neg_slope]
+                                + ang_no_wrap[max_pos_slope])/2
+                # adjust the center angle value to a +/- 180 range
+                while abs(center_angle) > 180:
+                    if center_angle < 0:
+                        center_angle += 360
+                    else:
+                        center_angle -= 360
+                # find the included angle between max negative slope and min
+                inc_ang_neg = abs(ang_no_wrap[poss_objects[i][1]]
+                                  - ang_no_wrap[max_neg_slope])
+                # adjust for lidar beam width
+                inc_ang_neg -= beam_width
+                if inc_ang_neg < 0:
+                    inc_ang_neg = 0
+                # find the included angle between max positive slope and min
+                inc_ang_pos = abs(ang_no_wrap[max_pos_slope]
+                                  - ang_no_wrap[poss_objects[i][1]])
+                # adjust for lidar beam width
+                inc_ang_pos -= beam_width
+                if inc_ang_pos < 0:
+                    inc_ang_pos = 0
+                # find minimum distance to object using local minimum index
+                min_distance = distance[poss_objects[i][1]]
+                # calculate object width based on included angles and distance
+                width = min_distance * (tan(radians(inc_ang_neg))
+                                        + tan(radians(inc_ang_pos)))
+                # check skew of edges to see they are at about same distance
+                skew = (abs(distance[max_pos_slope]-distance[max_neg_slope])
+                        /((distance[max_pos_slope]+distance[max_neg_slope])/2))
+                # final checks before storing object
+                if (inc_ang_neg + inc_ang_pos <= max_angle
+                        and width <= max_width
+                        and skew <= max_skew):
+                    objects.append((max_neg_slope, poss_objects[i][1],
+                                    max_pos_slope, center_angle, min_distance,
+                                    width))
+        return objects
+
     @staticmethod
     def _ang_no_wrap(angle):
         """Converts the lidar angle data to a non-wrapping list.
@@ -757,12 +780,13 @@ class PiBOT:
         Parameters
         ----------
         angle : list
-            The lidar angle data from a scan
+            The lidar angle data from a scan.
 
         Returns
         -------
         list
-            A list of non-wrapping lidar angle values.
+            A list of non-wrapping lidar angle values with no
+            discontinuity at +/- 180 degrees.
 
         """
 
@@ -775,10 +799,158 @@ class PiBOT:
                     wraps += 1
                 elif angle[i+1] > 0:
                     wraps -= 1
-            # adjust angle for non-wrapping values
+            # adjust angle to create non-wrapping values
             if wraps != 0:
                 ang_no_wrap[i+1] += 360 * wraps
         return ang_no_wrap
+
+    @staticmethod
+    def _extrema(distance):
+        """Finds all local minima and maxima in the lidar scan distance.
+
+        Parameters
+        ----------
+        distance : list
+            The lidar distance data.
+
+        Returns
+        -------
+        2-tuple of lists
+            A pair of lists comprising the indices of all minima and
+            maxima in the distance list.
+
+        """
+
+        # initialize variables to store extrema
+        min_index = 0
+        max_index = 0
+        minima = []
+        maxima = []
+        # compare all adjacent distance values
+        for i in range(len(distance)-1):
+            # look for and store local minima
+            if distance[i+1] < distance[i]:
+                min_index = i+1
+            elif min_index != 0 and min_index == i:
+                minima.append(min_index)
+            # look for and store local maxima
+            if distance[i+1] > distance[i]:
+                max_index = i+1
+            elif max_index != 0 and max_index == i:
+                maxima.append(max_index)
+        # store last point if needed
+        if distance[-1] < distance[-2]:
+            minima.append(len(distance)-1)
+        elif distance[-1] > distance[-2]:
+            maxima.append(len(distance)-1)
+        return minima, maxima
+
+    @staticmethod
+    def _extrema_filt(distance, extrema, threshold=5):
+        """Filters local minima and maxima in the lidar scan distance.
+
+        Parameters
+        ----------
+        distance : list
+            The lidar distance data.
+        extrema : 2-tuple of lists
+            The indices of the minima and maxima of the distance values.
+        threshold : int, float, default=5
+            The minimum size in cm of local minima or maxima to retain.
+
+        Returns
+        -------
+        2-tuple of lists
+            A pair of lists comprising the filter minima and maxima
+            indices after removing the small spikes from noise.
+
+        """
+
+        # initialize variables to filter extrema
+        minima = extrema[0]
+        maxima = extrema[1]
+        minima_filt = []
+        maxima_filt = []
+        index = 0
+        left = False
+        right = False
+        # test all local minima for size greater than or equal to threshold
+        for i in range(len(minima)):
+            # work backwards from each minima
+            index = minima[i] - 1
+            while index >= 0 and distance[index] >= distance[minima[i]]:
+                if distance[index] >= distance[minima[i]] + threshold:
+                    left = True
+                    break
+                index -= 1
+            # work forwards from each minima
+            index = minima[i] + 1
+            while (index <= len(distance)-1
+                   and distance[index] >= distance[minima[i]]):
+                if distance[index] >= distance[minima[i]] + threshold:
+                    right = True
+                    break
+                index += 1
+            # store any minima that meet threshold requirement
+            if left and right:
+                minima_filt.append(minima[i])
+            left = False
+            right = False
+        # test all local maxima for size greater than or equal to threshold
+        for i in range(len(maxima)):
+            # work backwards from each maxima
+            index = maxima[i] - 1
+            while index >= 0 and distance[index] <= distance[maxima[i]]:
+                if distance[index] <= distance[maxima[i]] - threshold:
+                    left = True
+                    break
+                index -= 1
+            # work forwards from each maxima
+            index = maxima[i] + 1
+            while (index <= len(distance)-1
+                   and distance[index] <= distance[maxima[i]]):
+                if distance[index] <= distance[maxima[i]] - threshold:
+                    right = True
+                    break
+                index += 1
+            # store any maxima that meet threshold requirement
+            if left and right:
+                maxima_filt.append(maxima[i])
+            left = False
+            right = False
+        # eliminate duplicate adjacent minima without maxima in between
+        i = 0
+        while i < len(minima_filt) - 1:
+            if distance[minima_filt[i]] == distance[minima_filt[i+1]]:
+                j = 0
+                while j < len(maxima_filt):
+                    if minima_filt[i] < maxima_filt[j] < minima_filt[i+1]:
+                        i += 1
+                        break
+                    elif j == len(maxima_filt) - 1:
+                        minima_filt.pop(i+1)
+                        break
+                    else:
+                        j += 1
+            else:
+                i += 1
+        # eliminate duplicate adjacent maxima without minima in between
+        i = 0
+        while i < len(maxima_filt) - 1:
+            if distance[maxima_filt[i]] == distance[maxima_filt[i+1]]:
+                j = 0
+                while j < len(minima_filt):
+                    if maxima_filt[i] < minima_filt[j] < maxima_filt[i+1]:
+                        i += 1
+                        break
+                    elif j == len(minima_filt) - 1:
+                        maxima_filt.pop(i+1)
+                        break
+                    else:
+                        j += 1
+            else:
+                i += 1
+        return minima_filt, maxima_filt
 
     @staticmethod
     def _lidar_derivative(angle, distance):
@@ -862,227 +1034,3 @@ class PiBOT:
                 else:
                     lidar_derivative[i] = lidar_derivative[i-1]
         return lidar_derivative
-
-    @staticmethod
-    def _negative_peaks(lidar_derivative):
-        """Finds all negative peaks in the lidar derivative list.
-
-        Parameters
-        ----------
-        lidar_derivative : list
-            The data calculated with the _lidar_derivative function
-
-        Returns
-        -------
-        list
-            A list of indices representing all negative peak values
-
-        """
-
-        # initialize variables to store peaks
-        peak_index = 0
-        negative_peaks = []
-        # look for local minima that are negative and below threshold
-        for i in range(len(lidar_derivative)-1):
-            if (lidar_derivative[i+1] < lidar_derivative[i]
-                    and lidar_derivative[i+1] < -cnst.MIN_THRESHOLD):
-                peak_index = i+1
-            # store the negative peak
-            elif peak_index != 0 and peak_index == i:
-                negative_peaks.append(peak_index)
-        # store last point if descending and below threshold
-        if (lidar_derivative[-1] < lidar_derivative[-2]
-                and lidar_derivative[-1] < -cnst.MIN_THRESHOLD):
-            negative_peaks.append(len(lidar_derivative)-1)
-        return negative_peaks
-
-    @staticmethod
-    def _positive_peaks(lidar_derivative):
-        """Finds all positive peaks in the lidar derivative list.
-
-        Parameters
-        ----------
-        lidar_derivative : list
-            The data calculated with the _lidar_derivative function
-
-        Returns
-        -------
-        list
-            A list of indices representing all positive peak values
-
-        """
-
-        # initialize variables to store peaks
-        peak_index = 0
-        positive_peaks = []
-        # look for local maxima that are positive and above threshold
-        for i in range(len(lidar_derivative)-1):
-            if (lidar_derivative[i+1] > lidar_derivative[i]
-                    and lidar_derivative[i+1] > cnst.MIN_THRESHOLD):
-                peak_index = i+1
-            # store the positive peak
-            elif peak_index != 0 and peak_index == i:
-                positive_peaks.append(peak_index)
-        # store last point if ascending and above threshold
-        if (lidar_derivative[-1] > lidar_derivative[-2]
-                and lidar_derivative[-1] > cnst.MIN_THRESHOLD):
-            positive_peaks.append(len(lidar_derivative)-1)
-        return positive_peaks
-
-    @staticmethod
-    def _leading_edges(negative_peaks, derivative):
-        """Finds leading edges of possible objects in foreground.
-
-        Parameters
-        ----------
-        negative_peaks : list
-            An index list of negative peaks in the lidar derivative list
-        derivative : list
-            The derivative of the lidar distance with respect to angle
-
-        Returns
-        -------
-        list
-            A list of indices in the lidar data for points with steep
-            slopes compared to the surrounding points that represent
-            possible leading edges.
-
-        """
-
-        # initialize variables to test for edges and store their indices
-        start = False
-        end = False
-        leading_edges = []
-        # get the start and stop indices of each peak
-        for i in range(len(negative_peaks)):
-            start_index = negative_peaks[i]
-            end_index = negative_peaks[i]
-            # work backwards to include points in peak above threshold
-            index = negative_peaks[i] - 1
-            while (index >= 0
-                   and (derivative[index]
-                        /derivative[negative_peaks[i]]) >= cnst.PEAK_THRESHOLD
-                   and derivative[index] > derivative[negative_peaks[i]]):
-                start_index = index
-                index -= 1
-            # work forwards to include points in peak above threshold
-            index = negative_peaks[i] + 1
-            while (index <= len(derivative)-1
-                   and (derivative[index]
-                        /derivative[negative_peaks[i]]) >= cnst.PEAK_THRESHOLD
-                   and derivative[index] > derivative[negative_peaks[i]]):
-                end_index = index
-                index += 1
-            # test for peak above threshold of average points to left
-            index = start_index - 1
-            average = 0
-            j = 0
-            while index >= 0 and j < cnst.NUM_ADJACENT:
-                average += derivative[index]
-                index -= 1
-                j += 1
-            if j != 0:
-                average = average / j
-                if average/derivative[negative_peaks[i]] < cnst.ADJ_THRESHOLD:
-                    start = True
-            else:
-                start = True
-            # test for peak above threshold of average points to right
-            index = end_index + 1
-            average = 0
-            j = 0
-            while index <= len(derivative)-1 and j < cnst.NUM_ADJACENT:
-                average += derivative[index]
-                index += 1
-                j += 1
-            if j != 0:
-                average = average / j
-                if average/derivative[negative_peaks[i]] < cnst.ADJ_THRESHOLD:
-                    end = True
-            else:
-                end = True
-            # check for threshold passed at start and end of potential edge
-            if start and end:
-                leading_edges.append(negative_peaks[i])
-                start = False
-                end = False
-        return leading_edges
-
-    @staticmethod
-    def _trailing_edges(positive_peaks, derivative):
-        """Finds trailing edges of possible objects in foreground.
-
-        Parameters
-        ----------
-        positive_peaks : list
-            An index list of positive peaks in the lidar derivative list
-        derivative : list
-            The derivative of the lidar distance with respect to angle
-
-        Returns
-        -------
-        list
-            A list of indices in the lidar data for points with steep
-            slopes compared to the surrounding points that represent
-            possible trailing edges.
-
-        """
-
-        # initialize variables to test for edges and store their indices
-        start = False
-        end = False
-        trailing_edges = []
-        # get the start and stop indices of each peak
-        for i in range(len(positive_peaks)):
-            start_index = positive_peaks[i]
-            end_index = positive_peaks[i]
-            # work backwards to include points in peak above threshold
-            index = positive_peaks[i] - 1
-            while (index >= 0
-                   and (derivative[index]
-                        /derivative[positive_peaks[i]]) >= cnst.PEAK_THRESHOLD
-                   and derivative[index] < derivative[positive_peaks[i]]):
-                start_index = index
-                index -= 1
-            # work forwards to include points in peak above threshold
-            index = positive_peaks[i] + 1
-            while (index <= len(derivative)-1
-                   and (derivative[index]
-                        /derivative[positive_peaks[i]]) >= cnst.PEAK_THRESHOLD
-                   and derivative[index] < derivative[positive_peaks[i]]):
-                end_index = index
-                index += 1
-            # test for peak above threshold of average points to left
-            index = start_index - 1
-            average = 0
-            j = 0
-            while index >= 0 and j < cnst.NUM_ADJACENT:
-                average += derivative[index]
-                index -= 1
-                j += 1
-            if j != 0:
-                average = average / j
-                if average/derivative[positive_peaks[i]] < cnst.ADJ_THRESHOLD:
-                    start = True
-            else:
-                start = True
-            # test for peak above threshold of average points to right
-            index = end_index + 1
-            average = 0
-            j = 0
-            while index <= len(derivative)-1 and j < cnst.NUM_ADJACENT:
-                average += derivative[index]
-                index += 1
-                j += 1
-            if j != 0:
-                average = average / j
-                if average/derivative[positive_peaks[i]] < cnst.ADJ_THRESHOLD:
-                    end = True
-            else:
-                end = True
-            # check for threshold passed at start and end of potential edge
-            if start and end:
-                trailing_edges.append(positive_peaks[i])
-                start = False
-                end = False
-        return trailing_edges
