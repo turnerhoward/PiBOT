@@ -605,6 +605,16 @@ class PiBOT:
         less accurate. The accuracy of the center angle depends on the
         edge-finding algorithm, the distance of the object, and the
         angle increment (i.e., step size) in the lidar data.
+        
+        Note
+        ----
+        For fast scans, the lidar readings lag the rotation, which leads
+        to a slight angular offset in the recorded center angle of the
+        detected object. Slower scans provided must better angle
+        accuracy. For narrow objects (e.g., below 20 cm wide), the
+        recorded object distance will be larger than the actual distance
+        for distances over 50 cm because the lidar beam width smooths
+        the edges of the object.
 
         Example
         -------
@@ -734,8 +744,8 @@ class PiBOT:
                 max_pos_slope = der.index(max_slope, poss_objects[i][1],
                                           poss_objects[i][2]) - 1
                 # find center angle as average angle of the steepest slopes
-                center_angle = (ang_no_wrap[max_neg_slope]
-                                + ang_no_wrap[max_pos_slope])/2
+                center_angle = round((ang_no_wrap[max_neg_slope]
+                                      + ang_no_wrap[max_pos_slope])/2, 1)
                 # adjust the center angle value to a +/- 180 range
                 while abs(center_angle) > 180:
                     if center_angle < 0:
@@ -759,8 +769,8 @@ class PiBOT:
                 # find minimum distance to object using local minimum index
                 min_distance = distance[poss_objects[i][1]]
                 # calculate object width based on included angles and distance
-                width = min_distance * (tan(radians(inc_ang_neg))
-                                        + tan(radians(inc_ang_pos)))
+                width = round(min_distance * (tan(radians(inc_ang_neg))
+                                              + tan(radians(inc_ang_pos))), 1)
                 # check skew of edges to see they are at about same distance
                 skew = (abs(distance[max_pos_slope]-distance[max_neg_slope])
                         /((distance[max_pos_slope]+distance[max_neg_slope])/2))
@@ -833,15 +843,16 @@ class PiBOT:
                 min_index = i+1
             elif min_index != 0 and min_index == i:
                 minima.append(min_index)
+            # store first point as maxima if flat or descending
+            if i == 0 and distance[i+1] <= distance[i]:
+                maxima.append(max_index)
             # look for and store local maxima
             if distance[i+1] > distance[i]:
                 max_index = i+1
             elif max_index != 0 and max_index == i:
                 maxima.append(max_index)
         # store last point if needed
-        if distance[-1] < distance[-2]:
-            minima.append(len(distance)-1)
-        elif distance[-1] > distance[-2]:
+        if distance[-1] >= distance[-2]:
             maxima.append(len(distance)-1)
         return minima, maxima
 
@@ -899,23 +910,41 @@ class PiBOT:
         # test all local maxima for size greater than or equal to threshold
         for i in range(len(maxima)):
             # work backwards from each maxima
-            index = maxima[i] - 1
-            while index >= 0 and distance[index] <= distance[maxima[i]]:
-                if distance[index] <= distance[maxima[i]] - threshold:
+            left_index = maxima[i] - 1
+            while (left_index >= 0
+                   and distance[left_index] <= distance[maxima[i]]):
+                if distance[left_index] <= distance[maxima[i]] - threshold:
                     left = True
                     break
-                index -= 1
+                left_index -= 1
             # work forwards from each maxima
-            index = maxima[i] + 1
-            while (index <= len(distance)-1
-                   and distance[index] <= distance[maxima[i]]):
-                if distance[index] <= distance[maxima[i]] - threshold:
+            right_index = maxima[i] + 1
+            while (right_index <= len(distance)-1
+                   and distance[right_index] <= distance[maxima[i]]):
+                if distance[right_index] <= distance[maxima[i]] - threshold:
                     right = True
                     break
-                index += 1
+                right_index += 1
             # store any maxima that meet threshold requirement
+            first_instance = None
             if left and right:
                 maxima_filt.append(maxima[i])
+            # store maxima near start of list
+            elif not left and right and left_index == -1:
+                if len(maxima_filt) == 0:
+                    maxima_filt.append(maxima[i])
+                elif distance[maxima_filt[0]] < distance[maxima[i]]:
+                    maxima_filt.pop()
+                    maxima_filt.append(maxima[i])
+            # store maxima near end of list
+            elif left and not right and right_index == len(distance):
+                if first_instance is None:
+                    first_instance = maxima[i]
+                    maxima_filt.append(maxima[i])
+                elif (distance[maxima_filt[-1]] < distance[maxima[i]]
+                      and maxima[i] > first_instance):
+                    maxima_filt.pop()
+                    maxima_filt.append(maxima[i])
             left = False
             right = False
         # eliminate duplicate adjacent minima without maxima in between
