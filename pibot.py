@@ -851,7 +851,7 @@ class PiBOT:
                 max_index = i+1
             elif max_index != 0 and max_index == i:
                 maxima.append(max_index)
-        # store last point if needed
+        # store last point as maxima if flat or ascending
         if distance[-1] >= distance[-2]:
             maxima.append(len(distance)-1)
         return minima, maxima
@@ -872,7 +872,7 @@ class PiBOT:
         Returns
         -------
         2-tuple of lists
-            A pair of lists comprising the filter minima and maxima
+            A pair of lists comprising the filtered minima and maxima
             indices after removing the small spikes from noise.
 
         """
@@ -882,16 +882,15 @@ class PiBOT:
         maxima = extrema[1]
         minima_filt = []
         maxima_filt = []
-        index = 0
-        left = False
-        right = False
+        backward = False
+        forward = False
         # test all local minima for size greater than or equal to threshold
         for i in range(len(minima)):
             # work backwards from each minima
             index = minima[i] - 1
             while index >= 0 and distance[index] >= distance[minima[i]]:
                 if distance[index] >= distance[minima[i]] + threshold:
-                    left = True
+                    backward = True
                     break
                 index -= 1
             # work forwards from each minima
@@ -899,45 +898,45 @@ class PiBOT:
             while (index <= len(distance)-1
                    and distance[index] >= distance[minima[i]]):
                 if distance[index] >= distance[minima[i]] + threshold:
-                    right = True
+                    forward = True
                     break
                 index += 1
             # store any minima that meet threshold requirement
-            if left and right:
+            if backward and forward:
                 minima_filt.append(minima[i])
-            left = False
-            right = False
+            backward = False
+            forward = False
         # test all local maxima for size greater than or equal to threshold
         for i in range(len(maxima)):
             # work backwards from each maxima
-            left_index = maxima[i] - 1
-            while (left_index >= 0
-                   and distance[left_index] <= distance[maxima[i]]):
-                if distance[left_index] <= distance[maxima[i]] - threshold:
-                    left = True
+            index_back = maxima[i] - 1
+            while (index_back >= 0
+                   and distance[index_back] <= distance[maxima[i]]):
+                if distance[index_back] <= distance[maxima[i]] - threshold:
+                    backward = True
                     break
-                left_index -= 1
+                index_back -= 1
             # work forwards from each maxima
-            right_index = maxima[i] + 1
-            while (right_index <= len(distance)-1
-                   and distance[right_index] <= distance[maxima[i]]):
-                if distance[right_index] <= distance[maxima[i]] - threshold:
-                    right = True
+            index_for = maxima[i] + 1
+            while (index_for <= len(distance)-1
+                   and distance[index_for] <= distance[maxima[i]]):
+                if distance[index_for] <= distance[maxima[i]] - threshold:
+                    forward = True
                     break
-                right_index += 1
+                index_for += 1
             # store any maxima that meet threshold requirement
             first_instance = None
-            if left and right:
+            if backward and forward:
                 maxima_filt.append(maxima[i])
             # store maxima near start of list
-            elif not left and right and left_index == -1:
+            elif not backward and forward and index_back == -1:
                 if len(maxima_filt) == 0:
                     maxima_filt.append(maxima[i])
                 elif distance[maxima_filt[0]] < distance[maxima[i]]:
                     maxima_filt.pop()
                     maxima_filt.append(maxima[i])
             # store maxima near end of list
-            elif left and not right and right_index == len(distance):
+            elif backward and not forward and index_for == len(distance):
                 if first_instance is None:
                     first_instance = maxima[i]
                     maxima_filt.append(maxima[i])
@@ -945,40 +944,34 @@ class PiBOT:
                       and maxima[i] > first_instance):
                     maxima_filt.pop()
                     maxima_filt.append(maxima[i])
-            left = False
-            right = False
+            backward = False
+            forward = False
         # eliminate duplicate adjacent minima without maxima in between
         i = 0
         while i < len(minima_filt) - 1:
+            duplicate = True
             if distance[minima_filt[i]] == distance[minima_filt[i+1]]:
-                j = 0
-                while j < len(maxima_filt):
+                for j in range(len(maxima_filt)):
                     if minima_filt[i] < maxima_filt[j] < minima_filt[i+1]:
-                        i += 1
+                        duplicate = False
                         break
-                    elif j == len(maxima_filt) - 1:
-                        minima_filt.pop(i+1)
-                        break
-                    else:
-                        j += 1
-            else:
-                i += 1
+                if duplicate:
+                    minima_filt.pop(i+1)
+                    i -= 1
+            i += 1
         # eliminate duplicate adjacent maxima without minima in between
         i = 0
         while i < len(maxima_filt) - 1:
+            duplicate = True
             if distance[maxima_filt[i]] == distance[maxima_filt[i+1]]:
-                j = 0
-                while j < len(minima_filt):
+                for j in range(len(minima_filt)):
                     if maxima_filt[i] < minima_filt[j] < maxima_filt[i+1]:
-                        i += 1
+                        duplicate = False
                         break
-                    elif j == len(minima_filt) - 1:
-                        maxima_filt.pop(i+1)
-                        break
-                    else:
-                        j += 1
-            else:
-                i += 1
+                if duplicate:
+                    maxima_filt.pop(i+1)
+                    i -= 1
+            i += 1
         return minima_filt, maxima_filt
 
     @staticmethod
