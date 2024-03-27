@@ -726,6 +726,83 @@ class PiBOT:
         y_centroid = round((y_sum / area), 1)
         return [x_centroid, y_centroid]
 
+    def find_corners(self, angle, distance):
+        """Finds possible inside corners using filtered distance maxima.
+
+        Parameters
+        ----------
+        angle : list
+            The lidar angle data
+        distance : list
+            The lidar distance data
+
+        Returns
+        -------
+        2-tuple of lists
+            A pair of lists comprising the corner angles and distances.
+            
+        Notes
+        -----
+        Finds the inside corners based on the maxima of the distance
+        data. The maxima only correspond with the locations of inside
+        corners when the scanned environment has a shape with distinct
+        corners and relatively straight walls. Irregular or organic
+        shapes will not produce useful results, nor will scans with
+        segments that are out of range (i.e., distances > 140 cm).
+                
+        Important
+        ---------
+        This tool is designed to work with data from a 360-degree scan
+        and should be used immediatedly after the scan when the robot is
+        stationary. Passing data from scans of more or less than 360
+        degrees will product unpredictable results.
+
+        Examples
+        --------
+
+        Create an instance of PiBOT.
+
+        >>> from pibot import PiBOT
+        >>> robot = PiBOT()
+
+        The unpacking operator is used to command a 360 degree scan and
+        send the angle and distance data directly to the .find_corners
+        method, which returns the result as two lists with equal lengths.
+
+        >>> corner_angle, corner_dist = robot.find_corners(*robot.scan(360))
+        >>> corner_angle
+        [128.4522, -173.644, -54.1342, 6.8564]
+        >>> corner_dist
+        [88.4, 79.5, 80.2, 90.7]
+
+        """
+
+        # find the filtered distance maxima
+        extrema = self._extrema(distance)
+        extrema_filt = self._extrema_filt(distance, extrema)
+        maxima_filt = extrema_filt[1]
+        # split angle and distance lists in half and reorder to merge start/end
+        num_points = len(distance)
+        halfway = int(num_points/2)
+        angle_reorder = angle[halfway+1:] + angle[0:halfway+1]
+        dist_reorder = distance[halfway+1:] + distance[0:halfway+1]
+        # find the filtered maxima again for the reordered distance 
+        extrema = self._extrema(dist_reorder)
+        extrema_filt = self._extrema_filt(dist_reorder, extrema)
+        maxima_filt_reorder = extrema_filt[1]
+        # keep only maxima present in both original and reordered distance list
+        corners = []
+        for x in maxima_filt:
+            index_reorder = x - (halfway+1)
+            if index_reorder < 0:
+                index_reorder += num_points
+            if index_reorder in maxima_filt_reorder:
+                corners.append(x)
+        # get the angle and distance data for only the corners
+        corner_angle = [angle[x] for x in corners]
+        corner_dist = [distance[x] for x in corners]
+        return corner_angle, corner_dist
+
     def detect_objects(self, angle, distance, filename=None):
         """Detects objects in the foreground of scan data.
 
