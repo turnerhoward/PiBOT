@@ -1,12 +1,14 @@
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en">
 <head>
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>pibot module &mdash; Physics 360 PiBOT 1.0 documentation</title>
-      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css" />
+
+  
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -579,6 +581,56 @@ values to find the centroid.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="mi">360</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">centroid</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">)</span>
 <span class="go">(28.3, -3.5)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pibot.PiBOT.find_corners">
+<span class="sig-name descname"><span class="pre">find_corners</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.find_corners"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.find_corners" title="Permalink to this definition"></a></dt>
+<dd><p>Finds possible inside corners using filtered distance maxima.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle</strong> (<em>list</em>) – The lidar angle data</p></li>
+<li><p><strong>distance</strong> (<em>list</em>) – The lidar distance data</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A pair of lists comprising the corner angles and distances.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>2-tuple of lists</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Finds the inside corners based on the maxima of the distance
+data. The maxima only correspond with the locations of inside
+corners when the scanned environment has a shape with distinct
+corners and relatively straight walls. Irregular or organic
+shapes will not produce useful results, nor will scans with
+segments that are out of range (i.e., distances &gt; 140 cm).</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>This tool is designed to work with data from a 360-degree scan
+and should be used immediatedly after the scan when the robot is
+stationary. Passing data from scans of more or less than 360
+degrees will product unpredictable results.</p>
+</div>
+<p class="rubric">Examples</p>
+<p>Create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The unpacking operator is used to command a 360 degree scan and
+send the angle and distance data directly to the .find_corners
+method, which returns the result as two lists with equal lengths.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">corner_angle</span><span class="p">,</span> <span class="n">corner_dist</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">find_corners</span><span class="p">(</span><span class="o">*</span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="mi">360</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">corner_angle</span>
+<span class="go">[128.4522, -173.644, -54.1342, 6.8564]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">corner_dist</span>
+<span class="go">[88.4, 79.5, 80.2, 90.7]</span>
 </pre></div>
 </div>
 </dd></dl>

@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>pibot &mdash; Physics 360 PiBOT 1.0 documentation</title>
-      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css" />
+
+  
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -796,6 +798,83 @@
         <span class="n">x_centroid</span> <span class="o">=</span> <span class="nb">round</span><span class="p">((</span><span class="n">x_sum</span> <span class="o">/</span> <span class="n">area</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
         <span class="n">y_centroid</span> <span class="o">=</span> <span class="nb">round</span><span class="p">((</span><span class="n">y_sum</span> <span class="o">/</span> <span class="n">area</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">x_centroid</span><span class="p">,</span> <span class="n">y_centroid</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="PiBOT.find_corners"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.find_corners">[docs]</a>    <span class="k">def</span> <span class="nf">find_corners</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finds possible inside corners using filtered distance maxima.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : list</span>
+<span class="sd">            The lidar angle data</span>
+<span class="sd">        distance : list</span>
+<span class="sd">            The lidar distance data</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        2-tuple of lists</span>
+<span class="sd">            A pair of lists comprising the corner angles and distances.</span>
+<span class="sd">            </span>
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Finds the inside corners based on the maxima of the distance</span>
+<span class="sd">        data. The maxima only correspond with the locations of inside</span>
+<span class="sd">        corners when the scanned environment has a shape with distinct</span>
+<span class="sd">        corners and relatively straight walls. Irregular or organic</span>
+<span class="sd">        shapes will not produce useful results, nor will scans with</span>
+<span class="sd">        segments that are out of range (i.e., distances &gt; 140 cm).</span>
+<span class="sd">                </span>
+<span class="sd">        Important</span>
+<span class="sd">        ---------</span>
+<span class="sd">        This tool is designed to work with data from a 360-degree scan</span>
+<span class="sd">        and should be used immediatedly after the scan when the robot is</span>
+<span class="sd">        stationary. Passing data from scans of more or less than 360</span>
+<span class="sd">        degrees will product unpredictable results.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        The unpacking operator is used to command a 360 degree scan and</span>
+<span class="sd">        send the angle and distance data directly to the .find_corners</span>
+<span class="sd">        method, which returns the result as two lists with equal lengths.</span>
+
+<span class="sd">        &gt;&gt;&gt; corner_angle, corner_dist = robot.find_corners(*robot.scan(360))</span>
+<span class="sd">        &gt;&gt;&gt; corner_angle</span>
+<span class="sd">        [128.4522, -173.644, -54.1342, 6.8564]</span>
+<span class="sd">        &gt;&gt;&gt; corner_dist</span>
+<span class="sd">        [88.4, 79.5, 80.2, 90.7]</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># find the filtered distance maxima</span>
+        <span class="n">extrema</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extrema</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span>
+        <span class="n">extrema_filt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extrema_filt</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="n">extrema</span><span class="p">)</span>
+        <span class="n">maxima_filt</span> <span class="o">=</span> <span class="n">extrema_filt</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># split angle and distance lists in half and reorder to merge start/end</span>
+        <span class="n">num_points</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span>
+        <span class="n">halfway</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_points</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">angle_reorder</span> <span class="o">=</span> <span class="n">angle</span><span class="p">[</span><span class="n">halfway</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">angle</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">halfway</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">dist_reorder</span> <span class="o">=</span> <span class="n">distance</span><span class="p">[</span><span class="n">halfway</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">distance</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">halfway</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># find the filtered maxima again for the reordered distance </span>
+        <span class="n">extrema</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extrema</span><span class="p">(</span><span class="n">dist_reorder</span><span class="p">)</span>
+        <span class="n">extrema_filt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extrema_filt</span><span class="p">(</span><span class="n">dist_reorder</span><span class="p">,</span> <span class="n">extrema</span><span class="p">)</span>
+        <span class="n">maxima_filt_reorder</span> <span class="o">=</span> <span class="n">extrema_filt</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># keep only maxima present in both original and reordered distance list</span>
+        <span class="n">corners</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">maxima_filt</span><span class="p">:</span>
+            <span class="n">index_reorder</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="p">(</span><span class="n">halfway</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">index_reorder</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">index_reorder</span> <span class="o">+=</span> <span class="n">num_points</span>
+            <span class="k">if</span> <span class="n">index_reorder</span> <span class="ow">in</span> <span class="n">maxima_filt_reorder</span><span class="p">:</span>
+                <span class="n">corners</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="c1"># get the angle and distance data for only the corners</span>
+        <span class="n">corner_angle</span> <span class="o">=</span> <span class="p">[</span><span class="n">angle</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">corners</span><span class="p">]</span>
+        <span class="n">corner_dist</span> <span class="o">=</span> <span class="p">[</span><span class="n">distance</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">corners</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">corner_angle</span><span class="p">,</span> <span class="n">corner_dist</span></div>
 
 <div class="viewcode-block" id="PiBOT.detect_objects"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.detect_objects">[docs]</a>    <span class="k">def</span> <span class="nf">detect_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Detects objects in the foreground of scan data.</span>
