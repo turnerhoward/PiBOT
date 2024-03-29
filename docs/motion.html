@@ -267,6 +267,57 @@ with the reverse parameter set to True.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="motion.Motion.go_to_position">
+<span class="sig-name descname"><span class="pre">go_to_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">position</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">protect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.go_to_position"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.go_to_position" title="Permalink to this definition"></a></dt>
+<dd><p>Commands a straight-line move to the desired x-y position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>position</strong> (<em>tuple</em><em> or </em><em>list with 2 elements</em>) – The x-y coordinates of the desired position.</p></li>
+<li><p><strong>speed</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>default=30</em>) – The desired speed in cm/s. Range from 5 to 30 cm/s.</p></li>
+<li><p><strong>protect</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Prevents interruption by another motion command.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Uses the current robot position and heading to calculate the
+heading and distance required to move the robot to the desired
+position. The .rotate_to_heading() method is used to orient the
+robot and the .forward() method then commands the motion to the
+final position. The robot’s heading at the end of the move will
+remain along the direction of the path taken.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>There is no provision to queue this method in a sequence because
+the calculation will be based on the position and heading before
+the sequence starts, and likely not at the correct step in the
+sequence. Use the robot.moving or robot.busy properties to wait
+for other motion to finish and call this method at the time it
+is needed.</p>
+</div>
+<p class="rubric">Examples</p>
+<p>Create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Get the current robot position.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">position</span>
+<span class="go">[10.225, -25.7433]</span>
+</pre></div>
+</div>
+<p>Move to the position (0, 0).</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">go_to_position</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Wait for motion to stop and recheck the position.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">position</span>
+<span class="go">[-0.023275, 0.061157]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="motion.Motion.rotate_left">
 <span class="sig-name descname"><span class="pre">rotate_left</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ang_speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">180</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">protect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.rotate_left"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.rotate_left" title="Permalink to this definition"></a></dt>
 <dd><p>Commands counterclockwise rotation in place.</p>
@@ -354,7 +405,7 @@ the “right” parameter set to True.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="motion.Motion.rotate_to_heading">
-<span class="sig-name descname"><span class="pre">rotate_to_heading</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">desired_heading</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ang_speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">180</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">protect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.rotate_to_heading"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.rotate_to_heading" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">rotate_to_heading</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">desired_heading</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ang_speed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">180</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.rotate_to_heading"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.rotate_to_heading" title="Permalink to this definition"></a></dt>
 <dd><p>Calculates and commands rotation to the desired heading.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -362,7 +413,6 @@ the “right” parameter set to True.</p>
 <li><p><strong>desired_heading</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>maximum +/- 180</em>) – The desired heading angle in degrees.</p></li>
 <li><p><strong>ang_speed</strong> (<em>int</em><em> or </em><em>float</em><em>, </em><em>default=180 deg/s</em>) – The desired angular speed. Range from 30 to 180 deg/s.</p></li>
 <li><p><strong>direction</strong> (<em>{'left'</em><em>, </em><em>'right'}</em><em>, </em><em>default is None for shortest angle</em>) – The rotation direction for robot to turn to heading.</p></li>
-<li><p><strong>protect</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Prevents interruption by another motion command.</p></li>
 </ul>
 </dd>
 </dl>
@@ -373,12 +423,12 @@ methods to command rotation. The rotation direction can be set
 to ‘left’ (i.e., counterclockwise) or ‘right’ (i.e., clockwise).
 If no direction is specified, the rotation direction is
 determined automatically for the shortest rotation angle.</p>
+<p>The rotation is automatically set for protected motion to
+ensure the move is completed without interruption.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The angle calculation is done at the time this method is called,
-not when the motion is executed later in the control loop. There
-is no provision to queue this method in a sequence because the
-calulation will be based on the heading before the sequence
+<p>There is no provision to queue this method in a sequence because
+the calculation will be based on the heading before the sequence
 starts, and likely not at the correct step in the sequence. Use
 the robot.moving or robot.busy properties to wait for other
 motion to finish and call this method at the time it is needed.</p>

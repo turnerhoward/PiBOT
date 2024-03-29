@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>motion &mdash; Physics 360 PiBOT 1.0 documentation</title>
-      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css" />
+
+  
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -133,7 +135,7 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">import</span> <span class="nn">constants</span> <span class="k">as</span> <span class="nn">cnst</span>
-<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">pi</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">pi</span><span class="p">,</span> <span class="n">degrees</span><span class="p">,</span> <span class="n">sqrt</span><span class="p">,</span> <span class="n">atan2</span>
 
 
 <div class="viewcode-block" id="Motion"><a class="viewcode-back" href="../motion.html#motion.Motion">[docs]</a><span class="k">class</span> <span class="nc">Motion</span><span class="p">:</span>
@@ -335,6 +337,92 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">speed</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="n">queue</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
+<div class="viewcode-block" id="Motion.go_to_position"><a class="viewcode-back" href="../motion.html#motion.Motion.go_to_position">[docs]</a>    <span class="k">def</span> <span class="nf">go_to_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">speed</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Commands a straight-line move to the desired x-y position.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        position : tuple or list with 2 elements</span>
+<span class="sd">            The x-y coordinates of the desired position.</span>
+<span class="sd">        speed : int or float, default=30</span>
+<span class="sd">            The desired speed in cm/s. Range from 5 to 30 cm/s.</span>
+<span class="sd">        protect : bool, default=False</span>
+<span class="sd">            Prevents interruption by another motion command.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Uses the current robot position and heading to calculate the</span>
+<span class="sd">        heading and distance required to move the robot to the desired</span>
+<span class="sd">        position. The .rotate_to_heading() method is used to orient the</span>
+<span class="sd">        robot and the .forward() method then commands the motion to the</span>
+<span class="sd">        final position. The robot&#39;s heading at the end of the move will</span>
+<span class="sd">        remain along the direction of the path taken.</span>
+
+<span class="sd">        Note</span>
+<span class="sd">        ----</span>
+<span class="sd">        There is no provision to queue this method in a sequence because</span>
+<span class="sd">        the calculation will be based on the position and heading before</span>
+<span class="sd">        the sequence starts, and likely not at the correct step in the</span>
+<span class="sd">        sequence. Use the robot.moving or robot.busy properties to wait</span>
+<span class="sd">        for other motion to finish and call this method at the time it</span>
+<span class="sd">        is needed.</span>
+<span class="sd">        </span>
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Create an instance of PiBOT.</span>
+
+<span class="sd">        &gt;&gt;&gt; from pibot import PiBOT</span>
+<span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
+
+<span class="sd">        Get the current robot position.</span>
+
+<span class="sd">        &gt;&gt;&gt; robot.position</span>
+<span class="sd">        [10.225, -25.7433]</span>
+<span class="sd">        </span>
+<span class="sd">        Move to the position (0, 0).</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; robot.move.go_to_position((0, 0))</span>
+<span class="sd">        </span>
+<span class="sd">        Wait for motion to stop and recheck the position.</span>
+<span class="sd">        </span>
+<span class="sd">        &gt;&gt;&gt; robot.position</span>
+<span class="sd">        [-0.023275, 0.061157]</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_arguments</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="n">position</span><span class="p">,</span>
+                                          <span class="n">speed</span><span class="o">=</span><span class="n">speed</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="n">protect</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: invalid argument to .go_to_position() method&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="c1"># wait to avoid getting heading while _tracking() method is active</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_tracking_lock</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="c1"># get start heading and position</span>
+        <span class="n">start_heading</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_heading</span> <span class="o">*</span> <span class="p">(</span><span class="mi">180</span><span class="o">/</span><span class="n">pi</span><span class="p">)</span>
+        <span class="n">start_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_position</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="c1"># calculate distance to desired position</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">((</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">start_position</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span>
+                               <span class="o">+</span> <span class="p">(</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">start_position</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="c1"># calculate angle of position vector</span>
+        <span class="n">angle</span> <span class="o">=</span> <span class="n">atan2</span><span class="p">((</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">start_position</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                             <span class="p">(</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">start_position</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="c1"># convert angle to degrees</span>
+        <span class="n">angle</span> <span class="o">=</span> <span class="n">degrees</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+        <span class="c1"># rotate toward position</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rotate_to_heading</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+        <span class="c1"># wait for rotation to finish</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctrl</span><span class="o">.</span><span class="n">_motion_state</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="s1">&#39;pause&#39;</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="c1"># move forward to home position</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">speed</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="n">protect</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="Motion.rotate_left"><a class="viewcode-back" href="../motion.html#motion.Motion.rotate_left">[docs]</a>    <span class="k">def</span> <span class="nf">rotate_left</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ang_speed</span><span class="o">=</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MAX</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                     <span class="n">queue</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Commands counterclockwise rotation in place.</span>
@@ -486,7 +574,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">rotate_left</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">ang_speed</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="n">queue</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Motion.rotate_to_heading"><a class="viewcode-back" href="../motion.html#motion.Motion.rotate_to_heading">[docs]</a>    <span class="k">def</span> <span class="nf">rotate_to_heading</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">desired_heading</span><span class="p">,</span> <span class="n">ang_speed</span><span class="o">=</span><span class="n">cnst</span><span class="o">.</span><span class="n">ANG_SPD_MAX</span><span class="p">,</span>
-                          <span class="n">direction</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+                          <span class="n">direction</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculates and commands rotation to the desired heading.</span>
 
 <span class="sd">        Parameters</span>
@@ -497,8 +585,6 @@
 <span class="sd">            The desired angular speed. Range from 30 to 180 deg/s.</span>
 <span class="sd">        direction : {&#39;left&#39;, &#39;right&#39;}, default is None for shortest angle</span>
 <span class="sd">            The rotation direction for robot to turn to heading.</span>
-<span class="sd">        protect : bool, default=False</span>
-<span class="sd">            Prevents interruption by another motion command.</span>
 
 <span class="sd">        Notes</span>
 <span class="sd">        -----</span>
@@ -508,13 +594,14 @@
 <span class="sd">        to &#39;left&#39; (i.e., counterclockwise) or &#39;right&#39; (i.e., clockwise).</span>
 <span class="sd">        If no direction is specified, the rotation direction is</span>
 <span class="sd">        determined automatically for the shortest rotation angle.</span>
+<span class="sd">        </span>
+<span class="sd">        The rotation is automatically set for protected motion to</span>
+<span class="sd">        ensure the move is completed without interruption.</span>
 
 <span class="sd">        Note</span>
 <span class="sd">        ----</span>
-<span class="sd">        The angle calculation is done at the time this method is called,</span>
-<span class="sd">        not when the motion is executed later in the control loop. There</span>
-<span class="sd">        is no provision to queue this method in a sequence because the</span>
-<span class="sd">        calulation will be based on the heading before the sequence</span>
+<span class="sd">        There is no provision to queue this method in a sequence because</span>
+<span class="sd">        the calculation will be based on the heading before the sequence</span>
 <span class="sd">        starts, and likely not at the correct step in the sequence. Use</span>
 <span class="sd">        the robot.moving or robot.busy properties to wait for other</span>
 <span class="sd">        motion to finish and call this method at the time it is needed.</span>
@@ -567,6 +654,7 @@
         <span class="c1"># check for valid arguments</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">valid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_arguments</span><span class="p">(</span><span class="s1">&#39;heading&#39;</span><span class="p">,</span> <span class="n">heading</span><span class="o">=</span><span class="n">desired_heading</span><span class="p">,</span>
+                                          <span class="n">ang_speed</span><span class="o">=</span><span class="n">ang_speed</span><span class="p">,</span>
                                           <span class="n">direction</span><span class="o">=</span><span class="n">direction</span><span class="p">)</span>
         <span class="k">except</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: invalid argument to .rotate_to_heading() method&#39;</span><span class="p">)</span>
@@ -595,10 +683,10 @@
             <span class="n">rotation_angle</span> <span class="o">+=</span> <span class="mi">360</span>
         <span class="c1"># command left rotation</span>
         <span class="k">if</span> <span class="n">rotation_angle</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">rotate_left</span><span class="p">(</span><span class="n">rotation_angle</span><span class="p">,</span> <span class="n">ang_speed</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rotate_left</span><span class="p">(</span><span class="n">rotation_angle</span><span class="p">,</span> <span class="n">ang_speed</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
         <span class="c1"># command right rotation</span>
         <span class="k">elif</span> <span class="n">rotation_angle</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">rotate_right</span><span class="p">(</span><span class="o">-</span><span class="n">rotation_angle</span><span class="p">,</span> <span class="n">ang_speed</span><span class="p">,</span> <span class="n">protect</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rotate_right</span><span class="p">(</span><span class="o">-</span><span class="n">rotation_angle</span><span class="p">,</span> <span class="n">ang_speed</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span></div>
         
 <div class="viewcode-block" id="Motion.arc_forward"><a class="viewcode-back" href="../motion.html#motion.Motion.arc_forward">[docs]</a>    <span class="k">def</span> <span class="nf">arc_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">arc_length</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">arc_angle</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                     <span class="n">sense</span><span class="o">=</span><span class="s1">&#39;counterclockwise&#39;</span><span class="p">,</span> <span class="n">protect</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -896,17 +984,18 @@
                          <span class="n">ang_speed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                          <span class="n">arc_length</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">arc_angle</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sense</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                          <span class="n">protect</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">queue</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                         <span class="n">heading</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                         <span class="n">heading</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Checks for valid arguments from user calls.</span>
 
 <span class="sd">        Accepts all the parameters to .forward(), .reverse(),</span>
-<span class="sd">        .rotate_left(), .rotate_right(), .arc_forward(), .arc_reverse(),</span>
+<span class="sd">        .go_to_position(), .rotate_left(), .rotate_right(),</span>
+<span class="sd">        .rotate_to_heading(), .arc_forward(), .arc_reverse(),</span>
 <span class="sd">        .steer_left(), and .steer_right() methods.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># general checks for most motion commands</span>
-        <span class="k">if</span> <span class="n">motion_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="s1">&#39;arc&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">speed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">motion_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="s1">&#39;arc&#39;</span><span class="p">,</span> <span class="s1">&#39;position&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">speed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: speed must be set&#39;</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">speed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">speed</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: speed must be a numeric value&#39;</span><span class="p">)</span>
@@ -923,7 +1012,7 @@
         <span class="k">elif</span> <span class="p">(</span><span class="n">motion_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;steer&#39;</span><span class="p">,</span> <span class="s1">&#39;heading&#39;</span><span class="p">)</span>
               <span class="ow">and</span> <span class="n">protect</span> <span class="o">!=</span> <span class="kc">True</span> <span class="ow">and</span> <span class="n">protect</span> <span class="o">!=</span> <span class="kc">False</span><span class="p">):</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: protect must be a boolean value True or False&#39;</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="p">(</span><span class="n">motion_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;steer&#39;</span><span class="p">,</span> <span class="s1">&#39;heading&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">motion_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;steer&#39;</span><span class="p">,</span> <span class="s1">&#39;heading&#39;</span><span class="p">,</span> <span class="s1">&#39;position&#39;</span><span class="p">)</span>
               <span class="ow">and</span> <span class="n">queue</span> <span class="o">!=</span> <span class="kc">True</span> <span class="ow">and</span> <span class="n">queue</span> <span class="o">!=</span> <span class="kc">False</span><span class="p">):</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: queue must be a boolean value True or False&#39;</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">distance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">queue</span> <span class="ow">and</span> <span class="n">distance</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -931,6 +1020,17 @@
         <span class="k">elif</span> <span class="n">motion_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="s1">&#39;arc&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">reverse</span> <span class="o">!=</span> <span class="kc">True</span>
                                                    <span class="ow">and</span> <span class="n">reverse</span> <span class="o">!=</span> <span class="kc">False</span><span class="p">):</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: reverse must be a boolean value True or False&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">motion_type</span> <span class="o">==</span> <span class="s1">&#39;position&#39;</span> <span class="ow">and</span> <span class="n">position</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: desired position must be set&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">position</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: desired position must be a tuple or list&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">position</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">position</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: position must have two elements (i.e., x and y)&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">position</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+              <span class="ow">and</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">position</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: desired x-y coordinates must be numeric values&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">heading</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="o">-</span><span class="mi">180</span> <span class="o">&lt;=</span> <span class="n">heading</span> <span class="o">&lt;=</span> <span class="mi">180</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: desired heading must be in the range -180 to 180&#39;</span><span class="p">)</span>
         <span class="c1"># specific checks for rotate motion</span>
         <span class="k">elif</span> <span class="n">ang_speed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ang_speed</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: ang_speed must be a numeric value&#39;</span><span class="p">)</span>
@@ -993,8 +1093,7 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Checks for repeat user calls with the same arguments.</span>
 
 <span class="sd">        Used to prevent repeat motion calls from sending commands to the</span>
-<span class="sd">        control loop where they will needlessly trigger the an update in</span>
-<span class="sd">        state.</span>
+<span class="sd">        control loop where they will needlessly trigger a state update.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
 

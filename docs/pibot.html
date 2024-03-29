@@ -487,6 +487,66 @@ method using the unpacking operator (*) as shown.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="pibot.PiBOT.convert_to_xy">
+<span class="sig-name descname"><span class="pre">convert_to_xy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.convert_to_xy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.convert_to_xy" title="Permalink to this definition"></a></dt>
+<dd><p>Converts the lidar scan data to x-y coordinates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle</strong> (<em>list</em>) – The lidar angle data</p></li>
+<li><p><strong>distance</strong> (<em>list</em>) – The lidar distance data</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A pair of lists containing the x and y coordinates .</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>two-tuple of lists</p>
+</dd>
+</dl>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>The coordinates returned represent the x-y positions of all the
+points detected during a lidar scan and are based on the current
+coordinate system and position of the robot. If the robot has
+moved or rotated since the previous scan, the x-y coordinates
+will not be properly located and oriented to the previously
+scanned environment.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pibot.PiBOT.convert_point_to_xy">
+<span class="sig-name descname"><span class="pre">convert_point_to_xy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.convert_point_to_xy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.convert_point_to_xy" title="Permalink to this definition"></a></dt>
+<dd><p>Converts a single lidar scan point to x-y coordinates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle</strong> (<em>int</em><em>, </em><em>float</em>) – A single lidar angle</p></li>
+<li><p><strong>distance</strong> (<em>int</em><em>, </em><em>float</em>) – A single lidar distance</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A pair comprising the x-y coordinates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>2-tuple</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This method uses the .convert_to_xy method and simply reformats
+the returned values for more convenient use.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>The x-y position returned corresponds to a single point from
+a lidar scan and is based on the current coordinate system and
+position of the robot. If the robot has moved or rotated since
+the previous scan, the returned x-y position will not be
+properly located and oriented to the previous scan.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="pibot.PiBOT.center_point">
 <span class="sig-name descname"><span class="pre">center_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pibot.html#PiBOT.center_point"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pibot.PiBOT.center_point" title="Permalink to this definition"></a></dt>
 <dd><p>Finds the approximate geometric center of lidar scan points.</p>
@@ -624,7 +684,7 @@ degrees will product unpredictable results.</p>
 </pre></div>
 </div>
 <p>The unpacking operator is used to command a 360 degree scan and
-send the angle and distance data directly to the .find_corners
+send the angle and distance data directly to the .find_corners()
 method, which returns the result as two lists with equal lengths.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">corner_angle</span><span class="p">,</span> <span class="n">corner_dist</span> <span class="o">=</span> <span class="n">robot</span><span class="o">.</span><span class="n">find_corners</span><span class="p">(</span><span class="o">*</span><span class="n">robot</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="mi">360</span><span class="p">))</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">corner_angle</span>

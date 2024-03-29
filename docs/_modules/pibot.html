@@ -642,6 +642,93 @@
         <span class="c1"># find index of minimum value in distance list</span>
         <span class="n">min_index</span> <span class="o">=</span> <span class="n">distance</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">distance</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">angle</span><span class="p">[</span><span class="n">min_index</span><span class="p">],</span> <span class="n">distance</span><span class="p">[</span><span class="n">min_index</span><span class="p">]</span></div>
+    
+<div class="viewcode-block" id="PiBOT.convert_to_xy"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.convert_to_xy">[docs]</a>    <span class="k">def</span> <span class="nf">convert_to_xy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts the lidar scan data to x-y coordinates.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : list</span>
+<span class="sd">            The lidar angle data</span>
+<span class="sd">        distance : list</span>
+<span class="sd">            The lidar distance data</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        two-tuple of lists</span>
+<span class="sd">            A pair of lists containing the x and y coordinates .</span>
+<span class="sd">            </span>
+<span class="sd">        Important</span>
+<span class="sd">        ---------</span>
+<span class="sd">        The coordinates returned represent the x-y positions of all the</span>
+<span class="sd">        points detected during a lidar scan and are based on the current</span>
+<span class="sd">        coordinate system and position of the robot. If the robot has</span>
+<span class="sd">        moved or rotated since the previous scan, the x-y coordinates</span>
+<span class="sd">        will not be properly located and oriented to the previously</span>
+<span class="sd">        scanned environment.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle must be a list&#39;</span>
+                         <span class="o">+</span> <span class="s1">&#39; with at least 2 elements&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">angle</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle values must be numeric&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance must be a list&#39;</span>
+                         <span class="o">+</span> <span class="s1">&#39; with at least 2 elements&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">distance</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance values must be numeric&#39;</span><span class="p">)</span>
+        <span class="c1"># get the current x and y positions</span>
+        <span class="n">x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">y_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># calculate the x and y coordinates and offset by the current position</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">distance</span><span class="p">)):</span>
+            <span class="n">x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_position</span> <span class="o">+</span> <span class="nb">round</span><span class="p">(</span><span class="n">distance</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">cos</span><span class="p">(</span><span class="n">radians</span><span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="p">])),</span> <span class="mi">1</span><span class="p">))</span>
+            <span class="n">y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y_position</span> <span class="o">+</span> <span class="nb">round</span><span class="p">(</span><span class="n">distance</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">sin</span><span class="p">(</span><span class="n">radians</span><span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="p">])),</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span></div>
+    
+<div class="viewcode-block" id="PiBOT.convert_point_to_xy"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.convert_point_to_xy">[docs]</a>    <span class="k">def</span> <span class="nf">convert_point_to_xy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts a single lidar scan point to x-y coordinates.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        angle : int, float</span>
+<span class="sd">            A single lidar angle</span>
+<span class="sd">        distance : int, float</span>
+<span class="sd">            A single lidar distance</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        2-tuple</span>
+<span class="sd">            A pair comprising the x-y coordinates.</span>
+<span class="sd">            </span>
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This method uses the .convert_to_xy method and simply reformats</span>
+<span class="sd">        the returned values for more convenient use.</span>
+<span class="sd">        </span>
+<span class="sd">        Important</span>
+<span class="sd">        ---------</span>
+<span class="sd">        The x-y position returned corresponds to a single point from</span>
+<span class="sd">        a lidar scan and is based on the current coordinate system and</span>
+<span class="sd">        position of the robot. If the robot has moved or rotated since</span>
+<span class="sd">        the previous scan, the returned x-y position will not be</span>
+<span class="sd">        properly located and oriented to the previous scan.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle must be a numeric value&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance must be a numeric value&#39;</span><span class="p">)</span>
+        <span class="c1"># get the current x and y position using .convert_to_xy method</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert_to_xy</span><span class="p">([</span><span class="n">angle</span><span class="p">],</span> <span class="p">[</span><span class="n">distance</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="PiBOT.center_point"><a class="viewcode-back" href="../pibot.html#pibot.PiBOT.center_point">[docs]</a>    <span class="k">def</span> <span class="nf">center_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Finds the approximate geometric center of lidar scan points.</span>
@@ -704,7 +791,7 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">distance</span><span class="p">):</span>
             <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance values must be numeric&#39;</span><span class="p">)</span>
         <span class="c1"># convert lidar scan data to x-y coordinates</span>
-        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_to_xy</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">)</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert_to_xy</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">)</span>
         <span class="c1"># calculate averages of x and y min-max values</span>
         <span class="n">x_center</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(((</span><span class="nb">max</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="nb">min</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
         <span class="n">y_center</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(((</span><span class="nb">max</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="nb">min</span><span class="p">(</span><span class="n">y</span><span class="p">))</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
@@ -782,7 +869,7 @@
         <span class="n">wedge_areas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wedge_areas</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">)</span>
         <span class="n">area</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">wedge_areas</span><span class="p">)</span>
         <span class="c1"># convert lidar scan data to x-y coordinates</span>
-        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convert_to_xy</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">)</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert_to_xy</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">)</span>
         <span class="c1"># calculate the center of each wedge using three vertices</span>
         <span class="n">x_centers</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">y_centers</span> <span class="o">=</span> <span class="p">[]</span>
@@ -839,7 +926,7 @@
 <span class="sd">        &gt;&gt;&gt; robot = PiBOT()</span>
 
 <span class="sd">        The unpacking operator is used to command a 360 degree scan and</span>
-<span class="sd">        send the angle and distance data directly to the .find_corners</span>
+<span class="sd">        send the angle and distance data directly to the .find_corners()</span>
 <span class="sd">        method, which returns the result as two lists with equal lengths.</span>
 
 <span class="sd">        &gt;&gt;&gt; corner_angle, corner_dist = robot.find_corners(*robot.scan(360))</span>
@@ -850,6 +937,17 @@
 
 <span class="sd">        &quot;&quot;&quot;</span>
 
+        <span class="c1"># check for valid arguments</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle must be a list&#39;</span>
+                         <span class="o">+</span> <span class="s1">&#39; with at least 3 elements&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">angle</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: angle values must be numeric&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance must be a list&#39;</span>
+                         <span class="o">+</span> <span class="s1">&#39; with at least 3 elements&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">distance</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: distance values must be numeric&#39;</span><span class="p">)</span>
         <span class="c1"># find the filtered distance maxima</span>
         <span class="n">extrema</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extrema</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span>
         <span class="n">extrema_filt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extrema_filt</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="n">extrema</span><span class="p">)</span>
@@ -1372,34 +1470,6 @@
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">lidar_derivative</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">lidar_derivative</span>
-    
-    <span class="k">def</span> <span class="nf">_convert_to_xy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts the lidar scan data to x-y coordinates.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        angle : list</span>
-<span class="sd">            The lidar angle data</span>
-<span class="sd">        distance : list</span>
-<span class="sd">            The lidar distance data</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        two-tuple of lists</span>
-<span class="sd">            A pair of lists containing the x and y coordinates.</span>
-
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="c1"># get the current x and y positions</span>
-        <span class="n">x_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">y_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="c1"># calculate the x and y coordinates and offset by the current position</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">distance</span><span class="p">)):</span>
-            <span class="n">x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_position</span> <span class="o">+</span> <span class="nb">round</span><span class="p">(</span><span class="n">distance</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">cos</span><span class="p">(</span><span class="n">radians</span><span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="p">])),</span> <span class="mi">1</span><span class="p">))</span>
-            <span class="n">y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y_position</span> <span class="o">+</span> <span class="nb">round</span><span class="p">(</span><span class="n">distance</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">sin</span><span class="p">(</span><span class="n">radians</span><span class="p">(</span><span class="n">angle</span><span class="p">[</span><span class="n">i</span><span class="p">])),</span> <span class="mi">1</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span>
     
     <span class="k">def</span> <span class="nf">_wedge_areas</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="p">,</span> <span class="n">distance</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculates the area of each wedge in the scan data.</span>
