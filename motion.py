@@ -62,7 +62,7 @@ ensure that queued moves run uninterrupted before the next one starts.
 """
 
 import constants as cnst
-from math import pi
+from math import pi, degrees, sqrt, atan2
 
 
 class Motion:
@@ -264,6 +264,92 @@ class Motion:
 
         self.forward(speed, distance, protect, queue, reverse=True)
 
+    def go_to_position(self, position, speed=30, protect=False):
+        """Commands a straight-line move to the desired x-y position.
+
+        Parameters
+        ----------
+        position : tuple or list with 2 elements
+            The x-y coordinates of the desired position.
+        speed : int or float, default=30
+            The desired speed in cm/s. Range from 5 to 30 cm/s.
+        protect : bool, default=False
+            Prevents interruption by another motion command.
+
+        Notes
+        -----
+        Uses the current robot position and heading to calculate the
+        heading and distance required to move the robot to the desired
+        position. The .rotate_to_heading() method is used to orient the
+        robot and the .forward() method then commands the motion to the
+        final position. The robot's heading at the end of the move will
+        remain along the direction of the path taken.
+
+        Note
+        ----
+        There is no provision to queue this method in a sequence because
+        the calculation will be based on the position and heading before
+        the sequence starts, and likely not at the correct step in the
+        sequence. Use the robot.moving or robot.busy properties to wait
+        for other motion to finish and call this method at the time it
+        is needed.
+        
+        Examples
+        --------
+
+        Create an instance of PiBOT.
+
+        >>> from pibot import PiBOT
+        >>> robot = PiBOT()
+
+        Get the current robot position.
+
+        >>> robot.position
+        [10.225, -25.7433]
+        
+        Move to the position (0, 0).
+        
+        >>> robot.move.go_to_position((0, 0))
+        
+        Wait for motion to stop and recheck the position.
+        
+        >>> robot.position
+        [-0.023275, 0.061157]
+        
+        """
+
+        # check for valid arguments
+        try:
+            valid = self._valid_arguments('position', position=position,
+                                          speed=speed, protect=protect)
+        except:
+            print('Error: invalid argument to .go_to_position() method')
+            return
+        else:
+            if not valid:
+                return
+        # wait to avoid getting heading while _tracking() method is active
+        while self._ctrl._tracking_lock:
+            continue
+        # get start heading and position
+        start_heading = self._ctrl._heading * (180/pi)
+        start_position = self._ctrl._position.copy()
+        # calculate distance to desired position
+        distance = sqrt((position[0]-start_position[0])**2
+                               + (position[1]-start_position[1])**2)
+        # calculate angle of position vector
+        angle = atan2((position[1]-start_position[1]),
+                             (position[0]-start_position[0]))
+        # convert angle to degrees
+        angle = degrees(angle)
+        # rotate toward position
+        self.rotate_to_heading(angle)
+        # wait for rotation to finish
+        while self._ctrl._motion_state not in ('stop', 'pause'):
+            continue
+        # move forward to home position
+        self.forward(speed, distance, protect=protect)
+
     def rotate_left(self, angle=0, ang_speed=cnst.ANG_SPD_MAX, protect=False,
                     queue=False, right=False):
         """Commands counterclockwise rotation in place.
@@ -415,7 +501,7 @@ class Motion:
         self.rotate_left(angle, ang_speed, protect, queue, right=True)
 
     def rotate_to_heading(self, desired_heading, ang_speed=cnst.ANG_SPD_MAX,
-                          direction=None, protect=False):
+                          direction=None):
         """Calculates and commands rotation to the desired heading.
 
         Parameters
@@ -426,8 +512,6 @@ class Motion:
             The desired angular speed. Range from 30 to 180 deg/s.
         direction : {'left', 'right'}, default is None for shortest angle
             The rotation direction for robot to turn to heading.
-        protect : bool, default=False
-            Prevents interruption by another motion command.
 
         Notes
         -----
@@ -437,13 +521,14 @@ class Motion:
         to 'left' (i.e., counterclockwise) or 'right' (i.e., clockwise).
         If no direction is specified, the rotation direction is
         determined automatically for the shortest rotation angle.
+        
+        The rotation is automatically set for protected motion to
+        ensure the move is completed without interruption.
 
         Note
         ----
-        The angle calculation is done at the time this method is called,
-        not when the motion is executed later in the control loop. There
-        is no provision to queue this method in a sequence because the
-        calulation will be based on the heading before the sequence
+        There is no provision to queue this method in a sequence because
+        the calculation will be based on the heading before the sequence
         starts, and likely not at the correct step in the sequence. Use
         the robot.moving or robot.busy properties to wait for other
         motion to finish and call this method at the time it is needed.
@@ -496,6 +581,7 @@ class Motion:
         # check for valid arguments
         try:
             valid = self._valid_arguments('heading', heading=desired_heading,
+                                          ang_speed=ang_speed,
                                           direction=direction)
         except:
             print('Error: invalid argument to .rotate_to_heading() method')
@@ -524,10 +610,10 @@ class Motion:
             rotation_angle += 360
         # command left rotation
         if rotation_angle > 0:
-            self.rotate_left(rotation_angle, ang_speed, protect, False)
+            self.rotate_left(rotation_angle, ang_speed, True, False)
         # command right rotation
         elif rotation_angle < 0:
-            self.rotate_right(-rotation_angle, ang_speed, protect, False)
+            self.rotate_right(-rotation_angle, ang_speed, True, False)
         
     def arc_forward(self, speed, radius, arc_length=0, arc_angle=0,
                     sense='counterclockwise', protect=False, queue=False,
@@ -825,17 +911,18 @@ class Motion:
                          ang_speed=None, angle=None, radius=None,
                          arc_length=None, arc_angle=None, sense=None,
                          protect=None, queue=None, reverse=None, right=None,
-                         heading=None, direction=None):
+                         heading=None, position=None, direction=None):
         """Checks for valid arguments from user calls.
 
         Accepts all the parameters to .forward(), .reverse(),
-        .rotate_left(), .rotate_right(), .arc_forward(), .arc_reverse(),
+        .go_to_position(), .rotate_left(), .rotate_right(),
+        .rotate_to_heading(), .arc_forward(), .arc_reverse(),
         .steer_left(), and .steer_right() methods.
 
         """
 
         # general checks for most motion commands
-        if motion_type in ('linear', 'arc') and speed is None:
+        if motion_type in ('linear', 'arc', 'position') and speed is None:
             print('Error: speed must be set')
         elif speed is not None and not isinstance(speed, (int, float)):
             print('Error: speed must be a numeric value')
@@ -852,7 +939,7 @@ class Motion:
         elif (motion_type not in ('steer', 'heading')
               and protect != True and protect != False):
             print('Error: protect must be a boolean value True or False')
-        elif (motion_type not in ('steer', 'heading')
+        elif (motion_type not in ('steer', 'heading', 'position')
               and queue != True and queue != False):
             print('Error: queue must be a boolean value True or False')
         elif distance is not None and queue and distance == 0:
@@ -860,6 +947,17 @@ class Motion:
         elif motion_type in ('linear', 'arc') and (reverse != True
                                                    and reverse != False):
             print('Error: reverse must be a boolean value True or False')
+        elif motion_type == 'position' and position is None:
+            print('Error: desired position must be set')
+        elif position is not None and not isinstance(position, (list, tuple)):
+            print('Error: desired position must be a tuple or list')
+        elif position is not None and len(position) != 2:
+            print('Error: position must have two elements (i.e., x and y)')
+        elif (position is not None
+              and not all(isinstance(x, (int, float)) for x in position)):
+            print('Error: desired x-y coordinates must be numeric values')
+        elif heading is not None and not (-180 <= heading <= 180):
+            print('Error: desired heading must be in the range -180 to 180')
         # specific checks for rotate motion
         elif ang_speed is not None and not isinstance(ang_speed, (int, float)):
             print('Error: ang_speed must be a numeric value')
@@ -922,8 +1020,7 @@ class Motion:
         """Checks for repeat user calls with the same arguments.
 
         Used to prevent repeat motion calls from sending commands to the
-        control loop where they will needlessly trigger the an update in
-        state.
+        control loop where they will needlessly trigger a state update.
 
         """
 

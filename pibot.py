@@ -569,6 +569,93 @@ class PiBOT:
         # find index of minimum value in distance list
         min_index = distance.index(min(distance))
         return angle[min_index], distance[min_index]
+    
+    def convert_to_xy(self, angle, distance):
+        """Converts the lidar scan data to x-y coordinates.
+
+        Parameters
+        ----------
+        angle : list
+            The lidar angle data
+        distance : list
+            The lidar distance data
+
+        Returns
+        -------
+        two-tuple of lists
+            A pair of lists containing the x and y coordinates .
+            
+        Important
+        ---------
+        The coordinates returned represent the x-y positions of all the
+        points detected during a lidar scan and are based on the current
+        coordinate system and position of the robot. If the robot has
+        moved or rotated since the previous scan, the x-y coordinates
+        will not be properly located and oriented to the previously
+        scanned environment.
+
+        """
+
+        # check for valid arguments
+        if not isinstance(angle, list) and len(angle) < 2:
+            return print('Error: angle must be a list'
+                         + ' with at least 2 elements')
+        if not all(isinstance(x, (int, float)) for x in angle):
+            return print('Error: angle values must be numeric')
+        if not isinstance(distance, list) and len(angle) < 2:
+            return print('Error: distance must be a list'
+                         + ' with at least 2 elements')
+        if not all(isinstance(x, (int, float)) for x in distance):
+            return print('Error: distance values must be numeric')
+        # get the current x and y positions
+        x_position = self.position[0]
+        y_position = self.position[1]
+        x = []
+        y = []
+        # calculate the x and y coordinates and offset by the current position
+        for i in range(len(distance)):
+            x.append(x_position + round(distance[i]*cos(radians(angle[i])), 1))
+            y.append(y_position + round(distance[i]*sin(radians(angle[i])), 1))
+        return x, y
+    
+    def convert_point_to_xy(self, angle, distance):
+        """Converts a single lidar scan point to x-y coordinates.
+
+        Parameters
+        ----------
+        angle : int, float
+            A single lidar angle
+        distance : int, float
+            A single lidar distance
+
+        Returns
+        -------
+        2-tuple
+            A pair comprising the x-y coordinates.
+            
+        Notes
+        -----
+        This method uses the .convert_to_xy method and simply reformats
+        the returned values for more convenient use.
+        
+        Important
+        ---------
+        The x-y position returned corresponds to a single point from
+        a lidar scan and is based on the current coordinate system and
+        position of the robot. If the robot has moved or rotated since
+        the previous scan, the returned x-y position will not be
+        properly located and oriented to the previous scan.
+
+        """
+
+        # check for valid arguments
+        if not isinstance(angle, (int, float)):
+            return print('Error: angle must be a numeric value')
+        if not isinstance(distance, (int, float)):
+            return print('Error: distance must be a numeric value')
+        # get the current x and y position using .convert_to_xy method
+        x, y = self.convert_to_xy([angle], [distance])
+        return x[0], y[0]
 
     def center_point(self, angle, distance):
         """Finds the approximate geometric center of lidar scan points.
@@ -631,7 +718,7 @@ class PiBOT:
         if not all(isinstance(x, (int, float)) for x in distance):
             return print('Error: distance values must be numeric')
         # convert lidar scan data to x-y coordinates
-        x, y = self._convert_to_xy(angle, distance)
+        x, y = self.convert_to_xy(angle, distance)
         # calculate averages of x and y min-max values
         x_center = round(((max(x) + min(x)) / 2), 1)
         y_center = round(((max(y) + min(y)) / 2), 1)
@@ -709,7 +796,7 @@ class PiBOT:
         wedge_areas = self._wedge_areas(angle, distance)
         area = sum(wedge_areas)
         # convert lidar scan data to x-y coordinates
-        x, y = self._convert_to_xy(angle, distance)
+        x, y = self.convert_to_xy(angle, distance)
         # calculate the center of each wedge using three vertices
         x_centers = []
         y_centers = []
@@ -766,7 +853,7 @@ class PiBOT:
         >>> robot = PiBOT()
 
         The unpacking operator is used to command a 360 degree scan and
-        send the angle and distance data directly to the .find_corners
+        send the angle and distance data directly to the .find_corners()
         method, which returns the result as two lists with equal lengths.
 
         >>> corner_angle, corner_dist = robot.find_corners(*robot.scan(360))
@@ -777,6 +864,17 @@ class PiBOT:
 
         """
 
+        # check for valid arguments
+        if not isinstance(angle, list) and len(angle) < 3:
+            return print('Error: angle must be a list'
+                         + ' with at least 3 elements')
+        if not all(isinstance(x, (int, float)) for x in angle):
+            return print('Error: angle values must be numeric')
+        if not isinstance(distance, list) and len(angle) < 3:
+            return print('Error: distance must be a list'
+                         + ' with at least 3 elements')
+        if not all(isinstance(x, (int, float)) for x in distance):
+            return print('Error: distance values must be numeric')
         # find the filtered distance maxima
         extrema = self._extrema(distance)
         extrema_filt = self._extrema_filt(distance, extrema)
@@ -1299,34 +1397,6 @@ class PiBOT:
                 else:
                     lidar_derivative[i] = lidar_derivative[i-1]
         return lidar_derivative
-    
-    def _convert_to_xy(self, angle, distance):
-        """Converts the lidar scan data to x-y coordinates.
-
-        Parameters
-        ----------
-        angle : list
-            The lidar angle data
-        distance : list
-            The lidar distance data
-
-        Returns
-        -------
-        two-tuple of lists
-            A pair of lists containing the x and y coordinates.
-
-        """
-
-        # get the current x and y positions
-        x_position = self.position[0]
-        y_position = self.position[1]
-        x = []
-        y = []
-        # calculate the x and y coordinates and offset by the current position
-        for i in range(len(distance)):
-            x.append(x_position + round(distance[i]*cos(radians(angle[i])), 1))
-            y.append(y_position + round(distance[i]*sin(radians(angle[i])), 1))
-        return x, y
     
     def _wedge_areas(self, angle, distance):
         """Calculates the area of each wedge in the scan data.
