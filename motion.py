@@ -906,6 +906,62 @@ class Motion:
 
         self.steer_left(radius, arc_angle, protect, right=True)
 
+    def change_speed(self, speed):
+        """Adjusts the speed of the active motion command.
+
+        Parameters
+        ----------
+        speed : int or float
+            The desired speed in cm/s. Range from 5 to 30 cm/s.
+
+        Notes
+        -----
+        Changing the speed is only possible during an active linear,
+        arc, or steering command. During normal operation, a new motion
+        call pauses all existing motion before starting (except for the
+        steer command, which maintains the current speed). This command
+        allows the speed to be altered without first coming to a halt.
+
+        Example
+        -------
+
+        Import time and create an instance of PiBOT.
+
+        >>> import time
+        >>> from pibot import PiBOT
+        >>> robot = PiBOT()
+
+        Start by commanding forward motion at 5 cm/s. Then increase the
+        speed to 20 cm/s after 2 seconds.
+
+        >>> robot.move.forward(5)
+        >>> time.sleep(2)
+        >>> robot.move.change_speed(20)
+        >>> time.sleep(2)
+        >>> robot.move.pause()
+
+        """
+
+        # check for valid speed input
+        if not isinstance(speed, (int, float)):
+            return(print('Error: speed must be a numeric value'))
+        elif speed < 0:
+            return(print('Error: speed must be positive'))
+        elif speed > cnst.SPD_MAX:
+            return(print('Error: maximum speed of robot is: %.2f cm/s' %cnst.SPD_MAX))
+        elif 0 <= speed < cnst.SPD_MIN:
+            return(print('Error: minimum speed of robot is: %.2f cm/s' %cnst.SPD_MIN))
+        # check for compatible motion in progress
+        if (self._ctrl._protect
+                or self._ctrl._motion_state in ('stop', 'pause', 'rotate')
+                or self._ctrl._velo_set == 0):
+            return     
+        # determine correct sign for velocity
+        if self._ctrl._velo_set < 0:
+            speed = -speed
+        # set new velocity
+        self._ctrl._velo_set = speed
+    
     @staticmethod
     def _valid_arguments(motion_type, speed=None, distance=None,
                          ang_speed=None, angle=None, radius=None,
