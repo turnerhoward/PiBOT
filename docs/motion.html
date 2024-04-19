@@ -645,6 +645,39 @@ discrete steering motion.</p></li>
 method with the right parameter set to True.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="motion.Motion.change_speed">
+<span class="sig-name descname"><span class="pre">change_speed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">speed</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/motion.html#Motion.change_speed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#motion.Motion.change_speed" title="Permalink to this definition"></a></dt>
+<dd><p>Adjusts the speed of the active motion command.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>speed</strong> (<em>int</em><em> or </em><em>float</em>) – The desired speed in cm/s. Range from 5 to 30 cm/s.</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Changing the speed is only possible during an active linear,
+arc, or steering command. During normal operation, a new motion
+call pauses all existing motion before starting (except for the
+steer command, which maintains the current speed). This command
+allows the speed to be altered without first coming to a halt.</p>
+<p class="rubric">Example</p>
+<p>Import time and create an instance of PiBOT.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">time</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pibot</span> <span class="kn">import</span> <span class="n">PiBOT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span> <span class="o">=</span> <span class="n">PiBOT</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Start by commanding forward motion at 5 cm/s. Then increase the
+speed to 20 cm/s after 2 seconds.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">change_speed</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">robot</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
 </dd></dl>
 
 </section>
