@@ -391,6 +391,9 @@ class PiBOT:
             for i in range(len(self.lidar_angle)):
                 file.write(f'{self.lidar_angle[i]}, {self.lidar_dist[i]}\n')
             file.close()
+        # wait for protected status to end so other motion won't be blocked
+        while self._control._protect:
+            continue
         return self.lidar_angle, self.lidar_dist
 
     def max_distance(self, angle, distance):
