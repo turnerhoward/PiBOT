@@ -20,6 +20,145 @@ from sensors import Whiskers, IrSensors, LidarSensor, IrRemote
 from outputs import Buzzer, LEDs
 
 
+class _DetectedObject:
+    """
+    Represents one candidate object found in a lidar scan.
+
+    ...
+
+    Parameters
+    ----------
+    leading_edge : int
+        Index into the scan data of the object's leading edge (the
+        steepest negative slope found between the first local maximum
+        and the local minimum).
+    min_index : int
+        Index into the scan data of the object's closest point (a
+        local minimum in the distance data).
+    trailing_edge : int
+        Index into the scan data of the object's trailing edge (the
+        steepest positive slope found between the local minimum and
+        the second local maximum).
+    center_angle : int or float
+        The estimated heading angle in degrees to the center of the
+        object.
+    min_distance : int or float
+        The estimated minimum distance in cm to the object.
+    width : int or float
+        The estimated width in cm of the object.
+
+    Notes
+    -----
+    _find_objects() builds one of these for each object it detects, and
+    detect_objects() reads center_angle, min_distance, and width back
+    out of each one. This replaces the plain 6-element tuples used in
+    an earlier version of this library (e.g.
+    (12, 15, 19, 42.7, 35.8, 12.6)), where each position had a
+    different, undocumented meaning and every caller had to know the
+    right index to read. Reading obj.center_angle instead of obj[3] is
+    self-documenting, and safer to extend if a future version needs to
+    record more about a detected object.
+
+    """
+
+    __slots__ = ('leading_edge', 'min_index', 'trailing_edge',
+                'center_angle', 'min_distance', 'width')
+
+    def __init__(self, leading_edge, min_index, trailing_edge,
+                center_angle, min_distance, width):
+        """Creates a _DetectedObject with the given field values."""
+
+        self.leading_edge = leading_edge
+        self.min_index = min_index
+        self.trailing_edge = trailing_edge
+        self.center_angle = center_angle
+        self.min_distance = min_distance
+        self.width = width
+
+    def __repr__(self):
+        """Returns a readable representation for debugging."""
+
+        return ('_DetectedObject(center_angle=%r, min_distance=%r, '
+                'width=%r, leading_edge=%r, min_index=%r, '
+                'trailing_edge=%r)' %(self.center_angle, self.min_distance,
+                                     self.width, self.leading_edge,
+                                     self.min_index, self.trailing_edge))
+
+
+class Scan:
+    """
+    Represents lidar scan data as paired angle and distance lists.
+
+    ...
+
+    Parameters
+    ----------
+    angle : list of int or float
+        The heading angles in degrees for each scan point.
+    distance : list of int or float
+        The corresponding lidar distances in cm for each scan point,
+        measured from the robot's center of rotation.
+
+    Notes
+    -----
+    A Scan bundles the angle and distance lists that were previously
+    passed as two separate arguments to every lidar analysis method
+    (.max_distance(), .min_distance(), .convert_to_xy(),
+    .center_point(), .centroid(), .find_corners(), and
+    .detect_objects()). Because both lists always need to describe the
+    same set of points, in the same order, keeping them in one object
+    with validation in one place removes the risk of the two lists
+    drifting out of sync, or being validated inconsistently, across
+    different methods.
+
+    A Scan does not copy the lists it is given; it stores the same
+    list objects it receives, the same way a plain list or tuple
+    constructor would. PiBOT.scan() always builds a fresh pair of
+    lists for each new scan, so .lidar_scan from an earlier scan is
+    never affected by a later one. If a Scan is built directly from
+    lists a program intends to keep changing, pass copies (e.g.
+    Scan(my_angle.copy(), my_distance.copy())) to keep them independent.
+
+    If angle and distance are not both lists of the same length
+    containing only numeric values, a Scan is still created, but with
+    empty angle and distance lists, and an error is printed. This
+    matches how every other method in this library reports a bad
+    argument, and it means a Scan built from bad data is simply
+    rejected by any method's own length check further downstream, with
+    a clear error message, rather than crashing.
+
+    """
+
+    def __init__(self, angle, distance):
+        """Creates a Scan, validating that angle and distance match."""
+
+        valid = (isinstance(angle, list) and isinstance(distance, list)
+                and len(angle) == len(distance)
+                and all(isinstance(a, (int, float)) for a in angle)
+                and all(isinstance(d, (int, float)) for d in distance))
+        if not valid:
+            print('Error: angle and distance must be lists of numeric '
+                 + 'values with the same length')
+            angle, distance = [], []
+        self.angle = angle
+        self.distance = distance
+
+    def __len__(self):
+        """Returns the number of points in the scan."""
+
+        return len(self.angle)
+
+    def __iter__(self):
+        """Iterates over the scan as (angle, distance) point pairs."""
+
+        return zip(self.angle, self.distance)
+
+    def __repr__(self):
+        """Returns a readable representation for debugging."""
+
+        return 'Scan(%d points)' %len(self.angle)
+
+
 class PiBOT:
     """
     Creates a top-level robot object to operate the PiBOT.
@@ -42,10 +181,9 @@ class PiBOT:
         Controls the buzzer sound output.
     move : Motion object
         Controls the robot motion.
-    lidar_dist : list
-        The lidar distance values stored when scanning.
-    lidar_angle : list
-        The headings (angle values) when scanning with lidar.
+    lidar_scan : Scan object
+        The angle and distance data stored from the most recent lidar
+        scan, as a Scan object with .angle and .distance lists.
     """
 
     def __init__(self):
@@ -63,9 +201,8 @@ class PiBOT:
                                 remote=self.remote)
         # pass _control object into move for access to contol attributes
         self.move = Motion(self._control)
-        # ATTRIBUTES FOR LIDAR SCAN
-        self.lidar_dist = []
-        self.lidar_angle = []
+        # ATTRIBUTE FOR LIDAR SCAN
+        self.lidar_scan = Scan([], [])
 
     @property
     def position(self):
@@ -99,10 +236,9 @@ class PiBOT:
         """
 
         # wait to avoid getting new value while _tracking() method is active
-        while self._control._tracking_lock:
-            continue
-        # return a static copy of the list instead of the list object itself
-        return self._control._position.copy()
+        with self._control._tracking_lock:
+            # return a static copy instead of the list object itself
+            return self._control._position.copy()
 
     @position.setter
     def position(self, value):
@@ -114,9 +250,10 @@ class PiBOT:
         if not all(isinstance(i, (int, float)) for i in value):
             return print('Error: x and y must be numeric values')
         # wait to avoid setting new value while _tracking() method is active
-        while self._control._tracking_lock:
-            continue
-        self._control._position = value
+        with self._control._tracking_lock:
+            # store a copy so later changes to the caller's list can't
+            # silently corrupt the robot's internal position tracking
+            self._control._position = value.copy()
 
     @property
     def heading(self):
@@ -152,9 +289,8 @@ class PiBOT:
         """
 
         # wait to avoid getting new value while _tracking() method is active
-        while self._control._tracking_lock:
-            continue
-        return self._control._heading * (180/pi)
+        with self._control._tracking_lock:
+            return self._control._heading * (180/pi)
 
     @heading.setter
     def heading(self, value):
@@ -164,9 +300,8 @@ class PiBOT:
         elif value < -180 or value > 180:
             return print('Error: heading must be in the range +/-180 degrees')
         # wait to avoid setting new value while _tracking() method is active
-        while self._control._tracking_lock:
-            continue
-        self._control._heading = value * (pi/180)
+        with self._control._tracking_lock:
+            self._control._heading = value * (pi/180)
 
     @property
     def current_time(self):
@@ -205,10 +340,10 @@ class PiBOT:
 
     @property
     def busy(self):
-        """Determines if the robot has protected or queued commands.
+        """Determines if the robot has protected motion or a running sequence.
 
         The robot is considered busy if protected motion is being
-        commanded or if commands are waiting in the queue.
+        commanded or if a sequence has moves still waiting to run.
 
         """
 
@@ -250,24 +385,24 @@ class PiBOT:
 
         Returns
         -------
-        2-tuple of lists
-            The corresponding angle and distance values, which can
-            also be accessed through the .lidar_angle and .lidar_dist
-            attributes.
+        Scan
+            The angle and distance data collected during the scan, as
+            a Scan object with .angle and .distance lists. This same
+            object is also stored in .lidar_scan.
 
         Notes
         -----
         The default angle increment of the lidar scan is set to 2.5
         degrees, which represents a good compromise between speed and
         resolution when scanning at the default maximum angular speed.
-        The actual angle stored in .lidar_angle varies because the data
-        is collected dynamically while the robot rotates. The lidar
-        detects a field of view of about 15 degrees, meaning the data
-        spaced at 2.5 degrees represents a higher resolution than the
-        lidar can really discern and results in overlapping ranges of
-        detection. In practice, the lidar sensor is fairly accurate at
-        measuring distances to objects that are large and flat, but for
-        small objects that are near the end of its measuring range, the
+        The actual angle stored varies because the data is collected
+        dynamically while the robot rotates. The lidar detects a field
+        of view of about 15 degrees, meaning the data spaced at 2.5
+        degrees represents a higher resolution than the lidar can
+        really discern and results in overlapping ranges of detection.
+        In practice, the lidar sensor is fairly accurate at measuring
+        distances to objects that are large and flat, but for small
+        objects that are near the end of its measuring range, the
         sensor will report larger values than expected, making the
         object appear further away than it really is. In some cases, an
         object can be missed entirely because the IR light from the
@@ -275,16 +410,30 @@ class PiBOT:
         overwhelms the light reflected from the small object in the
         foreground.
 
+        The heading for each data point is recorded right after the
+        lidar reading is taken, rather than before or as an average of
+        the two. The lidar reading takes about 10 ms, during which the
+        robot keeps rotating; at the default angular speed of 180 deg/s
+        this amounts to roughly 1.8 degrees of additional rotation
+        while a single reading is taken. This is small compared to the
+        15 degree beam spread discussed above, which remains the
+        dominant source of angular uncertainty in a scan, so the timing
+        of the heading reading was not tuned further.
+
         The optional filename is used to save a CSV file to the RP2040's
         memory, which can be accessed with Thonny and downloaded to the
         computer for analysis.
+
+        Each call to .scan() builds a new Scan from freshly collected
+        data, so a Scan saved from an earlier call (e.g. old_scan =
+        robot.scan(90)) is never changed by a later scan.
 
         Important
         ---------
         Remember that the lidar readings have an offset added so that
         the distances recorded are from the center of the robot's
-        wheel base. Therefore, the data in the lidar distance list of a
-        scan represents the radius from the robot's center of rotation.
+        wheel base. Therefore, the distance values in a scan represent
+        the radius from the robot's center of rotation.
 
         Examples
         --------
@@ -294,22 +443,23 @@ class PiBOT:
         >>> from pibot import PiBOT
         >>> robot = PiBOT()
 
-        Command a 180 degree clockwise scan. The returned lists are
-        stored in local variables as shown; however, it is not
-        necessary to use the returned values because they can also
-        be accessed directly with the .lidar_dist and .lidar_angle
-        attributes.
+        Command a 180 degree clockwise scan. The returned Scan is
+        stored in a local variable as shown; however, it is not
+        necessary to use the returned value because it can also be
+        accessed directly with the .lidar_scan attribute.
 
-        >>> angle, distance = robot.scan(-180)
+        >>> scan_data = robot.scan(-180)
 
         Command a 360 degree counterclockwise scan and store the data
-        to a file called 'test_data'. The data is not saved to local
-        variables. In the output, it is clear that the default angle
+        to a file called 'test_data'. The data is not saved to a local
+        variable. In the output, it is clear that the default angle
         increment of 2.5 degrees cannot be followed exactly but tracks
         fairly close to the desired step size.
 
         >>> robot.scan(360, filename='test_data')
-        ([0.0, 2.713043, 6.052173, 8.869564, 10.01739, 12.52174,...
+        Scan(144 points)
+        >>> robot.lidar_scan.angle
+        [0.0, 2.713043, 6.052173, 8.869564, 10.01739, 12.52174,...
 
         """
 
@@ -344,9 +494,11 @@ class PiBOT:
         # ensure the starting angle is positive
         if start_angle < 0:
             start_angle += 360
-        # clear lidar data before a new scan
-        self.lidar_dist.clear()
-        self.lidar_angle.clear()
+        # collect into fresh lists so an earlier .lidar_scan (or any Scan
+        # a program saved from a previous call) is never changed by this
+        # scan; the two lists are wrapped into a single new Scan at the end
+        angle_data = []
+        dist_data = []
         # start protected rotation at the specified angle and direction
         if angle > 0:
             self.move.rotate_left(angle, ang_speed, protect=True)
@@ -371,40 +523,42 @@ class PiBOT:
             while current_heading < desired_heading - 180:
                 current_heading += 360
             # store data when the current heading reaches the desired heading
+            # (heading is read right after the lidar call; see Notes above)
             if angle > 0 and current_heading > desired_heading:
-                self.lidar_dist.append(self.lidar.read())
-                self.lidar_angle.append(self.heading)
+                dist_data.append(self.lidar.read())
+                angle_data.append(self.heading)
                 i += 1
             elif angle < 0 and current_heading < desired_heading:
-                self.lidar_dist.append(self.lidar.read())
-                self.lidar_angle.append(self.heading)
+                dist_data.append(self.lidar.read())
+                angle_data.append(self.heading)
                 i -= 1
         # add one more data point at the end of rotation after settling
-        self.lidar_dist.append(self.lidar.read())
-        self.lidar_angle.append(self.heading)
+        dist_data.append(self.lidar.read())
+        angle_data.append(self.heading)
         # create a CSV (comma-separated values) file and write lidar data
         if filename:
             file = open(f'{filename}.csv', 'w')
             # add a file header
             file.write('angle (degrees), distance (cm)\n')
             # write each line of data
-            for i in range(len(self.lidar_angle)):
-                file.write(f'{self.lidar_angle[i]}, {self.lidar_dist[i]}\n')
+            for i in range(len(angle_data)):
+                file.write(f'{angle_data[i]}, {dist_data[i]}\n')
             file.close()
         # wait for protected status to end so other motion won't be blocked
         while self._control._protect:
             continue
-        return self.lidar_angle, self.lidar_dist
+        # wrap the collected data as a new Scan and store/return it
+        self.lidar_scan = Scan(angle_data, dist_data)
+        return self.lidar_scan
 
-    def max_distance(self, angle, distance):
+    def max_distance(self, scan):
         """Finds the maximum value in the lidar scan data.
 
         Parameters
         ----------
-        angle : list
-            The lidar angle data
-        distance : list
-            The lidar distance data
+        scan : Scan
+            The scan data, as returned by .scan() or stored in
+            .lidar_scan.
 
         Returns
         -------
@@ -417,12 +571,13 @@ class PiBOT:
         Finds the maximum value and corresponsing angle in the scan
         data. If there is more than one identical maximum value, the
         first one in the list is returned. If there are values out of
-        range (i.e., 140 cm), the method finds the block of 140 cm
-        values in the distance list that is longest and returns the
-        angle near the center of the block. If there is only one 140 cm
-        value, that will be returned as the maximum. If there is more
-        than one non-adjacent single 140 cm value, the first one in the
-        list will be returned as the maximum.
+        range (i.e., cnst.LIDAR_OUT_OF_RANGE, 140 cm), the method finds
+        the block of out-of-range values in the distance list that is
+        longest and returns the angle near the center of the block. If
+        there is only one out-of-range value, that will be returned as
+        the maximum. If there is more than one non-adjacent single
+        out-of-range value, the first one in the list will be returned
+        as the maximum.
                 
         Important
         ---------
@@ -437,51 +592,42 @@ class PiBOT:
         >>> from pibot import PiBOT
         >>> robot = PiBOT()
 
-        Command a 180 degree clockwise scan and use the returned values
+        Command a 180 degree clockwise scan and use the returned Scan
         to find the maximum.
 
-        >>> angle, distance = robot.scan(-180)
-        >>> robot.max_distance(angle, distance)
+        >>> scan_data = robot.scan(-180)
+        >>> robot.max_distance(scan_data)
         (128.4522, 140.0)
 
-        The arguments can also be the lidar data taken directly from the
-        PiBOT attributes instead of local copies used in the previous
-        example.
+        The argument can also be the lidar data taken directly from the
+        .lidar_scan attribute instead of a local copy of the Scan used
+        in the previous example.
 
         >>> robot.scan(-180)
-        ([0.0, -2.504347, -5.321739, -7.61739, -10.53913, -12.93913,...
-        >>> robot.max_distance(robot.lidar_angle, robot.lidar_dist)
+        Scan(72 points)
+        >>> robot.max_distance(robot.lidar_scan)
         (-80.34782, 91.0)
-
-        The scan can also return its values directly to the max_distance
-        method using the unpacking operator (*) as shown.
-
-        >>> robot.max_distance(*robot.scan(-180))
-        (-78.78259, 103.5)
 
         """
 
-        # check for valid arguments
-        if not isinstance(angle, list) and len(angle) < 3:
-            return print('Error: angle must be a list'
-                         + ' with at least 3 elements')
-        if not all(isinstance(x, (int, float)) for x in angle):
-            return print('Error: angle values must be numeric')
-        if not isinstance(distance, list) and len(angle) < 3:
-            return print('Error: distance must be a list'
-                         + ' with at least 3 elements')
-        if not all(isinstance(x, (int, float)) for x in distance):
-            return print('Error: distance values must be numeric')
+        # check for valid argument
+        if not isinstance(scan, Scan):
+            return print('Error: scan must be a Scan object')
+        if len(scan) < 3:
+            return print('Error: scan must have at least 3 points')
+        angle = scan.angle
+        distance = scan.distance
         # create count variables for out-of-range values
         count = 0
         max_count = 0
         out_of_range = []
-        # create list of all out-of-range values in lidar data (i.e., 140 cm)
-        for i in range(distance.count(140)):
+        # create list of all out-of-range values in lidar data
+        oor = cnst.LIDAR_OUT_OF_RANGE
+        for i in range(distance.count(oor)):
             if i == 0:
-                out_of_range.append(distance.index(140))
+                out_of_range.append(distance.index(oor))
             else:
-                out_of_range.append(distance.index(140, out_of_range[i-1] + 1))
+                out_of_range.append(distance.index(oor, out_of_range[i-1] + 1))
         # find center of largest patch of out-of-range values
         if len(out_of_range) > 0:
             for i in range(len(out_of_range)-1):
@@ -500,15 +646,14 @@ class PiBOT:
             max_index = distance.index(max(distance))
             return angle[max_index], distance[max_index]
 
-    def min_distance(self, angle, distance):
+    def min_distance(self, scan):
         """Finds the minimum value in the lidar scan data.
 
         Parameters
         ----------
-        angle : list
-            The lidar angle data
-        distance : list
-            The lidar distance data
+        scan : Scan
+            The scan data, as returned by .scan() or stored in
+            .lidar_scan.
 
         Returns
         -------
@@ -534,54 +679,43 @@ class PiBOT:
         >>> from pibot import PiBOT
         >>> robot = PiBOT()
 
-        Command a 180 degree clockwise scan and use the returned values
+        Command a 180 degree clockwise scan and use the returned Scan
         to find the minimum.
 
-        >>> angle, distance = robot.scan(-180)
-        >>> robot.min_distance(angle, distance)
+        >>> scan_data = robot.scan(-180)
+        >>> robot.min_distance(scan_data)
         (72.974, 18.2)
 
-        The arguments can also be the lidar data taken directly from the
-        PiBOT attributes instead of local copies used in the previous
-        example.
+        The argument can also be the lidar data taken directly from the
+        .lidar_scan attribute instead of a local copy of the Scan used
+        in the previous example.
 
         >>> robot.scan(-180)
-        ([0.0, -2.713043, -5.634782, -7.721738, -10.22609, -12.83478,...
-        >>> robot.min_distance(robot.lidar_angle, robot.lidar_dist)
+        Scan(72 points)
+        >>> robot.min_distance(robot.lidar_scan)
         (-120.0, 13.8)
-
-        The scan can also return its values directly to the min_distance
-        method using the unpacking operator (*) as shown.
-
-        >>> robot.min_distance(*robot.scan(-180))
-        (-179.9652, 19.6)
 
         """
 
-        # check for valid arguments
-        if not isinstance(angle, list) and len(angle) < 3:
-            return print('Error: angle must be a list'
-                         + ' with at least 3 elements')
-        if not all(isinstance(x, (int, float)) for x in angle):
-            return print('Error: angle values must be numeric')
-        if not isinstance(distance, list) and len(angle) < 3:
-            return print('Error: distance must be a list'
-                         + ' with at least 3 elements')
-        if not all(isinstance(x, (int, float)) for x in distance):
-            return print('Error: distance values must be numeric')
+        # check for valid argument
+        if not isinstance(scan, Scan):
+            return print('Error: scan must be a Scan object')
+        if len(scan) < 3:
+            return print('Error: scan must have at least 3 points')
+        angle = scan.angle
+        distance = scan.distance
         # find index of minimum value in distance list
         min_index = distance.index(min(distance))
         return angle[min_index], distance[min_index]
     
-    def convert_to_xy(self, angle, distance):
+    def convert_to_xy(self, scan):
         """Converts the lidar scan data to x-y coordinates.
 
         Parameters
         ----------
-        angle : list
-            The lidar angle data
-        distance : list
-            The lidar distance data
+        scan : Scan
+            The scan data, as returned by .scan() or stored in
+            .lidar_scan.
 
         Returns
         -------
@@ -599,17 +733,13 @@ class PiBOT:
 
         """
 
-        # check for valid arguments
-        if not isinstance(angle, list) and len(angle) < 2:
-            return print('Error: angle must be a list'
-                         + ' with at least 2 elements')
-        if not all(isinstance(x, (int, float)) for x in angle):
-            return print('Error: angle values must be numeric')
-        if not isinstance(distance, list) and len(angle) < 2:
-            return print('Error: distance must be a list'
-                         + ' with at least 2 elements')
-        if not all(isinstance(x, (int, float)) for x in distance):
-            return print('Error: distance values must be numeric')
+        # check for valid argument
+        if not isinstance(scan, Scan):
+            return print('Error: scan must be a Scan object')
+        if len(scan) < 1:
+            return print('Error: scan must have at least 1 point')
+        angle = scan.angle
+        distance = scan.distance
         # get the current x and y positions
         x_position = self.position[0]
         y_position = self.position[1]
@@ -657,18 +787,17 @@ class PiBOT:
         if not isinstance(distance, (int, float)):
             return print('Error: distance must be a numeric value')
         # get the current x and y position using .convert_to_xy method
-        x, y = self.convert_to_xy([angle], [distance])
+        x, y = self.convert_to_xy(Scan([angle], [distance]))
         return x[0], y[0]
 
-    def center_point(self, angle, distance):
+    def center_point(self, scan):
         """Finds the approximate geometric center of lidar scan points.
 
         Parameters
         ----------
-        angle : list
-            The lidar angle data
-        distance : list
-            The lidar distance data
+        scan : Scan
+            The scan data, as returned by .scan() or stored in
+            .lidar_scan.
 
         Returns
         -------
@@ -701,41 +830,34 @@ class PiBOT:
         >>> robot = PiBOT()
 
         Command a 360 degree counterclockwise scan and use the returned
-        values to find the approximate center point.
+        Scan to find the approximate center point.
 
-        >>> angle, distance = robot.scan(360)
-        >>> robot.center_point(angle, distance)
+        >>> scan_data = robot.scan(360)
+        >>> robot.center_point(scan_data)
         (-15.4, 29.6)
 
         """
 
-        # check for valid arguments
-        if not isinstance(angle, list) and len(angle) < 3:
-            return print('Error: angle must be a list'
-                         + ' with at least 3 elements')
-        if not all(isinstance(x, (int, float)) for x in angle):
-            return print('Error: angle values must be numeric')
-        if not isinstance(distance, list) and len(angle) < 3:
-            return print('Error: distance must be a list'
-                         + ' with at least 3 elements')
-        if not all(isinstance(x, (int, float)) for x in distance):
-            return print('Error: distance values must be numeric')
+        # check for valid argument
+        if not isinstance(scan, Scan):
+            return print('Error: scan must be a Scan object')
+        if len(scan) < 3:
+            return print('Error: scan must have at least 3 points')
         # convert lidar scan data to x-y coordinates
-        x, y = self.convert_to_xy(angle, distance)
+        x, y = self.convert_to_xy(scan)
         # calculate averages of x and y min-max values
         x_center = round(((max(x) + min(x)) / 2), 1)
         y_center = round(((max(y) + min(y)) / 2), 1)
         return x_center, y_center
     
-    def centroid(self, angle, distance):
+    def centroid(self, scan):
         """Finds the centroid using a weighted average of the scan data.
 
         Parameters
         ----------
-        angle : list
-            The lidar angle data
-        distance : list
-            The lidar distance data
+        scan : Scan
+            The scan data, as returned by .scan() or stored in
+            .lidar_scan.
 
         Returns
         -------
@@ -773,33 +895,27 @@ class PiBOT:
         >>> robot = PiBOT()
 
         Command a 360 degree counterclockwise scan and use the returned
-        values to find the centroid.
+        Scan to find the centroid.
 
-        >>> angle, distance = robot.scan(360)
-        >>> robot.centroid(angle, distance)
+        >>> scan_data = robot.scan(360)
+        >>> robot.centroid(scan_data)
         (28.3, -3.5)
 
         """
 
-        # check for valid arguments
-        if not isinstance(angle, list) and len(angle) < 3:
-            return print('Error: angle must be a list'
-                         + ' with at least 3 elements')
-        if not all(isinstance(x, (int, float)) for x in angle):
-            return print('Error: angle values must be numeric')
-        if not isinstance(distance, list) and len(angle) < 3:
-            return print('Error: distance must be a list'
-                         + ' with at least 3 elements')
-        if not all(isinstance(x, (int, float)) for x in distance):
-            return print('Error: distance values must be numeric')
+        # check for valid argument
+        if not isinstance(scan, Scan):
+            return print('Error: scan must be a Scan object')
+        if len(scan) < 3:
+            return print('Error: scan must have at least 3 points')
         # get the current x and y positions
         x_position = self.position[0]
         y_position = self.position[1]
         # calculate the wedge areas and total area
-        wedge_areas = self._wedge_areas(angle, distance)
+        wedge_areas = self._wedge_areas(scan)
         area = sum(wedge_areas)
         # convert lidar scan data to x-y coordinates
-        x, y = self.convert_to_xy(angle, distance)
+        x, y = self.convert_to_xy(scan)
         # calculate the center of each wedge using three vertices
         x_centers = []
         y_centers = []
@@ -816,15 +932,14 @@ class PiBOT:
         y_centroid = round((y_sum / area), 1)
         return [x_centroid, y_centroid]
 
-    def find_corners(self, angle, distance):
+    def find_corners(self, scan):
         """Finds possible inside corners using filtered distance maxima.
 
         Parameters
         ----------
-        angle : list
-            The lidar angle data
-        distance : list
-            The lidar distance data
+        scan : Scan
+            The scan data, as returned by .scan() or stored in
+            .lidar_scan.
 
         Returns
         -------
@@ -855,11 +970,11 @@ class PiBOT:
         >>> from pibot import PiBOT
         >>> robot = PiBOT()
 
-        The unpacking operator is used to command a 360 degree scan and
-        send the angle and distance data directly to the .find_corners()
-        method, which returns the result as two lists with equal lengths.
+        A 360 degree scan is commanded and the returned Scan is sent
+        directly to the .find_corners() method, which returns the result
+        as two lists with equal lengths.
 
-        >>> corner_angle, corner_dist = robot.find_corners(*robot.scan(360))
+        >>> corner_angle, corner_dist = robot.find_corners(robot.scan(360))
         >>> corner_angle
         [128.4522, -173.644, -54.1342, 6.8564]
         >>> corner_dist
@@ -867,17 +982,13 @@ class PiBOT:
 
         """
 
-        # check for valid arguments
-        if not isinstance(angle, list) and len(angle) < 3:
-            return print('Error: angle must be a list'
-                         + ' with at least 3 elements')
-        if not all(isinstance(x, (int, float)) for x in angle):
-            return print('Error: angle values must be numeric')
-        if not isinstance(distance, list) and len(angle) < 3:
-            return print('Error: distance must be a list'
-                         + ' with at least 3 elements')
-        if not all(isinstance(x, (int, float)) for x in distance):
-            return print('Error: distance values must be numeric')
+        # check for valid argument
+        if not isinstance(scan, Scan):
+            return print('Error: scan must be a Scan object')
+        if len(scan) < 3:
+            return print('Error: scan must have at least 3 points')
+        angle = scan.angle
+        distance = scan.distance
         # find the filtered distance maxima
         extrema = self._extrema(distance)
         extrema_filt = self._extrema_filt(distance, extrema)
@@ -904,15 +1015,14 @@ class PiBOT:
         corner_dist = [distance[x] for x in corners]
         return corner_angle, corner_dist
 
-    def detect_objects(self, angle, distance, filename=None):
+    def detect_objects(self, scan, filename=None):
         """Detects objects in the foreground of scan data.
 
         Parameters
         ----------
-        angle : list
-            The lidar angle data
-        distance : list
-            The lidar distance data
+        scan : Scan
+            The scan data, as returned by .scan() or stored in
+            .lidar_scan.
         filename : str, optional
             Name of the file to save the object data to a CSV.
 
@@ -969,13 +1079,12 @@ class PiBOT:
         >>> robot = PiBOT()
 
         Command a 120 degree counterclockwise scan and use the returned
-        values to detect objects. In this case the unpacking operator is
-        used to pass the angle and distance lists returned from the scan
-        directly into the .detect_objects() method. The returned object
-        lists are stored as local variables as shown. In this example
-        two objects are detected.
+        Scan to detect objects. In this case the Scan returned from the
+        scan is passed directly into the .detect_objects() method. The
+        returned object lists are stored as local variables as shown.
+        In this example two objects are detected.
 
-        >>> obj_angle, obj_dist, obj_width = robot.detect_objects(*robot.scan(120))
+        >>> obj_angle, obj_dist, obj_width = robot.detect_objects(robot.scan(120))
         >>> obj_angle
         [42.69345, 83.32172]
         >>> obj_dist
@@ -986,16 +1095,10 @@ class PiBOT:
         """
 
         # check for valid arguments
-        if not isinstance(angle, list) and len(angle) < 3:
-            return print('Error: angle must be a list'
-                         + ' with at least 3 elements')
-        if not all(isinstance(x, (int, float)) for x in angle):
-            return print('Error: angle values must be numeric')
-        if not isinstance(distance, list) and len(angle) < 3:
-            return print('Error: distance must be a list'
-                         + ' with at least 3 elements')
-        if not all(isinstance(x, (int, float)) for x in distance):
-            return print('Error: distance values must be numeric')
+        if not isinstance(scan, Scan):
+            return print('Error: scan must be a Scan object')
+        if len(scan) < 3:
+            return print('Error: scan must have at least 3 points')
         if filename and not isinstance(filename, str):
             return print('Error: filename must be a string')
         # initialize variables
@@ -1003,11 +1106,11 @@ class PiBOT:
         object_distance = []
         object_width = []
         # find objects in scan data
-        objects = self._find_objects(angle, distance)
-        for i in range(len(objects)):
-            object_angle.append(objects[i][3])
-            object_distance.append(objects[i][4])
-            object_width.append(objects[i][5])
+        objects = self._find_objects(scan)
+        for obj in objects:
+            object_angle.append(obj.center_angle)
+            object_distance.append(obj.min_distance)
+            object_width.append(obj.width)
         # create a CSV (comma-separated values) file and write object data
         if filename:
             file = open(f'{filename}.csv', 'w')
@@ -1020,16 +1123,15 @@ class PiBOT:
             file.close()
         return object_angle, object_distance, object_width
 
-    def _find_objects(self, angle, distance, max_angle=120, max_width=50,
+    def _find_objects(self, scan, max_angle=120, max_width=50,
                       max_skew=0.5):
         """Finds objects that meet angle, width, and skew criteria.
 
         Parameters
         ----------
-        angle : list
-            The lidar angle data
-        distance : list
-            The lidar distance data
+        scan : Scan
+            The scan data, as returned by .scan() or stored in
+            .lidar_scan.
         max_angle : int, float, default=120
             The maximum angle in degrees between the edges of possible
             objects for selection as detected objects.
@@ -1043,16 +1145,18 @@ class PiBOT:
 
         Returns
         -------
-        list of tuples
-            A list of tuples representing the detected objects. Each
-            tuple consists of 6 elements. The first three elements are
-            the indices of the leading edge, local minima, and trailing
-            edge of the objects. The last three values are the center
-            angle, distance, and width of the object.
+        list of _DetectedObject
+            A list of _DetectedObject instances representing the
+            detected objects. Each one records the indices of the
+            leading edge, local minimum, and trailing edge used to find
+            the object, plus the resulting center angle, distance, and
+            width (see the _DetectedObject class for details).
 
         """
 
         # initialize object variables
+        angle = scan.angle
+        distance = scan.distance
         beam_width = cnst.BEAM_ANGLE / 2
         poss_objects = []
         objects = []
@@ -1122,9 +1226,11 @@ class PiBOT:
                 if (inc_ang_neg + inc_ang_pos <= max_angle
                         and width <= max_width
                         and skew <= max_skew):
-                    objects.append((max_neg_slope, poss_objects[i][1],
-                                    max_pos_slope, center_angle, min_distance,
-                                    width))
+                    objects.append(_DetectedObject(max_neg_slope,
+                                                   poss_objects[i][1],
+                                                   max_pos_slope,
+                                                   center_angle,
+                                                   min_distance, width))
         return objects
 
     @staticmethod
@@ -1401,15 +1507,14 @@ class PiBOT:
                     lidar_derivative[i] = lidar_derivative[i-1]
         return lidar_derivative
     
-    def _wedge_areas(self, angle, distance):
+    def _wedge_areas(self, scan):
         """Calculates the area of each wedge in the scan data.
 
         Parameters
         ----------
-        angle : list
-            The lidar angle data
-        distance : list
-            The lidar distance data
+        scan : Scan
+            The scan data, as returned by .scan() or stored in
+            .lidar_scan.
 
         Returns
         -------
@@ -1420,8 +1525,9 @@ class PiBOT:
         """
 
         wedge_areas = []
+        distance = scan.distance
         # get the non-wrapping angle values to use in finding angle increments
-        ang_no_wrap = self._ang_no_wrap(angle)
+        ang_no_wrap = self._ang_no_wrap(scan.angle)
         # use are of triangle formula to find area of each wedge of lidar data
         for i in range(len(distance)-1):
             wedge_areas.append(0.5 * distance[i] * distance[i+1]

@@ -44,25 +44,202 @@ To create a sequence of motion where later motion calls do not overwrite
 the earlier ones, a means of waiting is required. A simple time delay
 could be used but would require calculating the duration of each delay
 and would eliminate the advantage of non-blocking motion that allows
-other commands to run concurrently. Instead, there is a special "queue"
-argument in several of the "move" methods that puts motion calls in a
-queued sequence. When one move finishes, the control loop checks for
-moves waiting in the queue and automatically starts the next one. The
-examples below in the Motion class demonstrate how to use the queue.
+other commands to run concurrently. Instead, the .sequence() method
+returns a Sequence object used to describe a chain of discrete moves,
+which run back-to-back once .run() is called. When one move finishes,
+the control loop automatically starts the next one in the sequence. The
+examples below in the Motion and Sequence classes demonstrate how to
+build and run a sequence.
 
 Note
 ----
 By default, when a "move" method is called, the control loop stops any
 active motion and starts the new request immediately. There is an
 argument in several of the methods called "protect" that prevents active
-motion from being interrupted by any subsequent motion calls. When using
-the "queue" argument, the "protect" argument is automatically set to
-ensure that queued moves run uninterrupted before the next one starts.
+motion from being interrupted by any subsequent motion calls. Every move
+added to a Sequence is automatically protected, so that once a sequence
+starts running, later queued moves cannot interrupt earlier ones before
+they finish.
 
 """
 
 import constants as cnst
 from math import pi, degrees, sqrt, atan2
+from commands import Move
+
+
+# ---------------------------------------------------------------------
+# Small, single-purpose argument validators shared by the Motion and
+# Sequence classes. Each one checks a single argument and prints a
+# message and returns False if it is invalid, or returns True if it is
+# valid. Composing several small checks with "and" (as done throughout
+# this module) keeps each motion method's validation short and makes it
+# easy to see exactly which checks apply to which method, rather than
+# routing every method through one large function that has to know
+# about every argument used by every motion type.
+# ---------------------------------------------------------------------
+
+def _valid_speed(speed):
+    """Checks that speed is numeric and within the allowed range."""
+
+    if not isinstance(speed, (int, float)):
+        print('Error: speed must be a numeric value')
+        return False
+    if speed < 0:
+        print('Error: speed must be positive')
+        return False
+    if speed > cnst.SPD_MAX:
+        print('Error: maximum speed of robot is: %.2f cm/s' %cnst.SPD_MAX)
+        return False
+    if 0 <= speed < cnst.SPD_MIN:
+        print('Error: minimum speed of robot is: %.2f cm/s' %cnst.SPD_MIN)
+        return False
+    return True
+
+
+def _valid_distance(distance, required=False):
+    """Checks that distance is numeric and positive (or zero if allowed)."""
+
+    if not isinstance(distance, (int, float)):
+        print('Error: distance must be a numeric value')
+        return False
+    if distance != 0 and distance < 0:
+        print('Error: distance must be positive')
+        return False
+    if required and distance == 0:
+        print('Error: only discrete moves are allowed in a sequence, '
+             + 'set a distance')
+        return False
+    return True
+
+
+def _valid_ang_speed(ang_speed):
+    """Checks that ang_speed is numeric and within the allowed range."""
+
+    if not isinstance(ang_speed, (int, float)):
+        print('Error: ang_speed must be a numeric value')
+        return False
+    if ang_speed < 0:
+        print('Error: ang_speed must be positive')
+        return False
+    if ang_speed > cnst.ANG_SPD_MAX:
+        print('Error: maximum ang_speed is: %.2f deg/s' %cnst.ANG_SPD_MAX)
+        return False
+    if ang_speed < cnst.ANG_SPD_MIN:
+        print('Error: minimum ang_speed is: %.2f deg/s' %cnst.ANG_SPD_MIN)
+        return False
+    return True
+
+
+def _valid_angle(angle, required=False):
+    """Checks that angle is numeric and within the allowed range."""
+
+    if not isinstance(angle, (int, float)):
+        print('Error: angle must be a numeric value')
+        return False
+    if angle < 0:
+        print('Error: angle must be positive')
+        return False
+    if angle > cnst.ANG_MAX:
+        print('Error: maximum rotation angle is %d degrees' %cnst.ANG_MAX)
+        return False
+    if required and angle == 0:
+        print('Error: only discrete moves are allowed in a sequence, '
+             + 'set an angle')
+        return False
+    return True
+
+
+def _valid_radius(radius):
+    """Checks that radius is numeric and at least the minimum radius."""
+
+    if not isinstance(radius, (int, float)):
+        print('Error: radius must be a numeric value')
+        return False
+    if radius < cnst.MIN_RADIUS:
+        print('Error: minimum radius is %.1f cm' %cnst.MIN_RADIUS)
+        return False
+    return True
+
+
+def _valid_arc_size(arc_length, arc_angle, required=False):
+    """Checks arc_length and arc_angle, which cannot both be set."""
+
+    if not isinstance(arc_length, (int, float)):
+        print('Error: arc_length must be a numeric value')
+        return False
+    if arc_length < 0:
+        print('Error: arc_length must be positive')
+        return False
+    if not isinstance(arc_angle, (int, float)):
+        print('Error: arc_angle must be a numeric value')
+        return False
+    if arc_angle < 0 or arc_angle > cnst.ANG_MAX:
+        print('Error: arc_angle must be positive and <= %d degrees'
+             %cnst.ANG_MAX)
+        return False
+    if arc_length != 0 and arc_angle != 0:
+        print('Error: arc_length and arc_angle cannot both be set')
+        return False
+    if required and arc_length == 0 and arc_angle == 0:
+        print('Error: only discrete moves are allowed in a sequence, set '
+             + 'arc_length or arc_angle')
+        return False
+    return True
+
+
+def _valid_sense(sense):
+    """Checks that sense is 'clockwise' or 'counterclockwise'."""
+
+    if sense != 'clockwise' and sense != 'counterclockwise':
+        print("Error: sense must be 'clockwise' or 'counterclockwise'")
+        return False
+    return True
+
+
+def _valid_bool(value, name):
+    """Checks that value is a boolean True or False."""
+
+    if value != True and value != False:
+        print('Error: %s must be a boolean value True or False' %name)
+        return False
+    return True
+
+
+def _valid_position(position):
+    """Checks that position is a 2-element list or tuple of numbers."""
+
+    if not isinstance(position, (list, tuple)):
+        print('Error: desired position must be a tuple or list')
+        return False
+    if len(position) != 2:
+        print('Error: position must have two elements (i.e., x and y)')
+        return False
+    if not all(isinstance(x, (int, float)) for x in position):
+        print('Error: desired x-y coordinates must be numeric values')
+        return False
+    return True
+
+
+def _valid_heading(heading):
+    """Checks that heading is numeric and in the range -180 to 180."""
+
+    if not isinstance(heading, (int, float)):
+        print('Error: desired heading must be a numeric value')
+        return False
+    if not (-180 <= heading <= 180):
+        print('Error: desired heading must be in the range -180 to 180')
+        return False
+    return True
+
+
+def _valid_direction(direction):
+    """Checks that direction is 'left', 'right', or None."""
+
+    if direction is not None and direction != 'left' and direction != 'right':
+        print("Error: rotation direction must be 'left', 'right', or None")
+        return False
+    return True
 
 
 class Motion:
@@ -95,14 +272,14 @@ class Motion:
         Note
         ----
         Calling .pause() halts any motion command, including protected
-        and queued motion.
+        motion and an active sequence.
         
         """
 
         self._ctrl._pause()
         # wait until the motion ramps down and the state is at pause
         while (self._ctrl._motion_state != 'pause'
-               and self._ctrl._motion_curr[0] != 'ready'):
+               and self._ctrl._motion_curr.kind != 'ready'):
             continue
 
     def resume(self):
@@ -132,8 +309,7 @@ class Motion:
 
         self._ctrl._resume()
 
-    def forward(self, speed, distance=0, protect=False, queue=False,
-                reverse=False):
+    def forward(self, speed, distance=0, protect=False, reverse=False):
         """Commands a forward (or reverse) linear path with constant speed.
 
         Parameters
@@ -145,8 +321,6 @@ class Motion:
             commands continuous motion.
         protect : bool, default=False
             Prevents interruption by another motion command.
-        queue : bool, default=False
-            Adds motion call to a queue for a sequence.
         reverse : bool, default=False
             Reverses the direction.
 
@@ -176,14 +350,12 @@ class Motion:
 
         >>> robot.move.forward(15, 10, protect=True)
 
-        Store moves in the queue to run a sequence. Note: protect is set
-        to True when using a queue to prevent later queue entries from
-        interrupting the earlier ones.
+        Build and run a sequence with the .sequence() method. Every move
+        in a sequence is automatically protected so that later steps
+        can't interrupt earlier ones.
 
-        >>> robot.move.forward(5, 5, queue=True)
-        >>> robot.move.reverse(5, 5, queue=True)
-        >>> robot.move.forward(20, 10, queue=True)
-        >>> robot.move.reverse(20, 10, queue=True)
+        >>> robot.move.sequence().forward(5, 5).reverse(5, 5) \\
+        ...     .forward(20, 10).reverse(20, 10).run()
         
         An unprotected move can be interrupted at any time with a new
         motion call. The control loop handles the smooth transitions.
@@ -198,49 +370,39 @@ class Motion:
 
         # check for valid arguments
         try:
-            valid = self._valid_arguments('linear', speed=speed,
-                                          distance=distance, protect=protect,
-                                          queue=queue, reverse=reverse)
+            valid = (_valid_speed(speed) and _valid_distance(distance)
+                    and _valid_bool(protect, 'protect')
+                    and _valid_bool(reverse, 'reverse'))
         except:
             print('Error: invalid argument to .forward() method')
             return
-        else:
-            if not valid:
-                return
-        # do nothing if motion is protected and the command is not queued
-        if self._ctrl._protect and not queue:
+        if not valid:
+            return
+        # do nothing if motion is currently protected
+        if self._ctrl._protect:
             return
         # change signs for reverse direction
         if reverse:
             speed = -speed
             distance = -distance
-        # store motion in queue if requested
-        if queue:
-            self._ctrl._motion_queue.append(['linear', True, speed,
-                                             distance])
-            # ensure motion is protected before returning
-            while not self._ctrl._protect:
-                continue
+        # assign the command to 'motion_call' to test for repeats
+        motion_call = Move('linear', protect=protect, speed=speed,
+                           distance=distance)
+        # return without calling motion if a repeat is being requested
+        if self._is_repeat_call(motion_call):
             return
-        # store command in _motion_curr attribute
-        else:
-            # assign the command to 'motion_call' to test for repeats
-            motion_call = ['linear', protect, speed, distance]
-            # return without calling motion if a repeat is being requested
-            if self._is_repeat_call(motion_call):
-                return
-            # check for running motion and ramp it down if needed
-            if self._ctrl._motion_state not in ('stop', 'pause', 'steer'):
-                self.pause()
-            # store command in motion_curr attribute
-            self._ctrl._motion_curr = motion_call
-            # clear out old queue when calling new non-sequence move
-            self._ctrl._motion_queue.clear()
-            # ensure motion has started before returning
-            while self._ctrl._motion_state != 'linear':
-                continue
+        # check for running motion and ramp it down if needed
+        if self._ctrl._motion_state not in ('stop', 'pause', 'steer'):
+            self.pause()
+        # store command in motion_curr attribute
+        self._ctrl._motion_curr = motion_call
+        # clear out any pending sequence when calling a new immediate move
+        self._ctrl._motion_queue.clear()
+        # ensure motion has started before returning
+        while self._ctrl._motion_state != 'linear':
+            continue
 
-    def reverse(self, speed, distance=0, protect=False, queue=False):
+    def reverse(self, speed, distance=0, protect=False):
         """Commands a linear reverse path with constant speed.
 
         Parameters
@@ -252,8 +414,6 @@ class Motion:
             commands continuous motion.
         protect : bool, default=False
             Prevents interruption by another motion command.
-        queue : bool, default=False
-            Adds motion call to a queue for a sequence.
 
         Notes
         -----
@@ -262,7 +422,7 @@ class Motion:
 
         """
 
-        self.forward(speed, distance, protect, queue, reverse=True)
+        self.forward(speed, distance, protect, reverse=True)
 
     def go_to_position(self, position, speed=30, protect=False):
         """Commands a straight-line move to the desired x-y position.
@@ -287,9 +447,9 @@ class Motion:
 
         Note
         ----
-        There is no provision to queue this method in a sequence because
-        the calculation will be based on the position and heading before
-        the sequence starts, and likely not at the correct step in the
+        This method cannot be added to a sequence because the
+        calculation is based on the position and heading at the moment
+        it is called, and likely not at the correct step in the
         sequence. Use the robot.moving or robot.busy properties to wait
         for other motion to finish and call this method at the time it
         is needed.
@@ -320,20 +480,17 @@ class Motion:
 
         # check for valid arguments
         try:
-            valid = self._valid_arguments('position', position=position,
-                                          speed=speed, protect=protect)
+            valid = (_valid_position(position) and _valid_speed(speed)
+                    and _valid_bool(protect, 'protect'))
         except:
             print('Error: invalid argument to .go_to_position() method')
             return
-        else:
-            if not valid:
-                return
+        if not valid:
+            return
         # wait to avoid getting heading while _tracking() method is active
-        while self._ctrl._tracking_lock:
-            continue
-        # get start heading and position
-        start_heading = self._ctrl._heading * (180/pi)
-        start_position = self._ctrl._position.copy()
+        with self._ctrl._tracking_lock:
+            start_heading = self._ctrl._heading * (180/pi)
+            start_position = self._ctrl._position.copy()
         # calculate distance to desired position
         distance = sqrt((position[0]-start_position[0])**2
                                + (position[1]-start_position[1])**2)
@@ -351,7 +508,7 @@ class Motion:
         self.forward(speed, distance, protect=protect)
 
     def rotate_left(self, angle=0, ang_speed=cnst.ANG_SPD_MAX, protect=False,
-                    queue=False, right=False):
+                    right=False):
         """Commands counterclockwise rotation in place.
 
         Parameters
@@ -362,8 +519,6 @@ class Motion:
             The desired angular speed. Range from 30 to 180 deg/s.
         protect : bool, default=False
             Prevents interruption by another motion command.
-        queue : bool, default=False
-            Adds motion call to a queue for a sequence.
         right : bool, default=False
             Commands right (clockwise) rotation instead of left.
 
@@ -393,12 +548,14 @@ class Motion:
 
         Move 10 cm at 15 cm/s, turn around at 30 deg/s, return to
         starting point, and turn around at maximum speed of 180 deg/s.
-        This motion uses the queue parameter to create a sequence.
+        This motion uses .sequence() to build and run a sequence.
 
-        >>> robot.move.forward(15, 10, queue=True)
-        >>> robot.move.rotate_left(180, 30, queue=True)
-        >>> robot.move.forward(15, 10, queue=True)
-        >>> robot.move.rotate_right(180, 180, queue=True)
+        >>> robot.move.sequence() \\
+        ...     .forward(15, 10) \\
+        ...     .rotate_left(180, 30) \\
+        ...     .forward(15, 10) \\
+        ...     .rotate_right(180, 180) \\
+        ...     .run()
         
         If discrete rotation is called while another unprotected move is
         in progress, the rotation temporarily interrupts the current
@@ -418,24 +575,21 @@ class Motion:
         >>> robot.move.pause()
         >>> time.sleep(2)
         >>> robot.move.resume()
-        >>> time.sleep(2)
-        >>> robot.move.pause()
 
         """
 
         # check for valid arguments
         try:
-            valid = self._valid_arguments('rotate', angle=angle,
-                                          ang_speed=ang_speed, protect=protect,
-                                          queue=queue, right=right)
+            valid = (_valid_angle(angle) and _valid_ang_speed(ang_speed)
+                    and _valid_bool(protect, 'protect')
+                    and _valid_bool(right, 'right'))
         except:
             print('Error: invalid argument to .rotate_left() method')
             return
-        else:
-            if not valid:
-                return
-        # do nothing if motion is protected and the command is not queued
-        if self._ctrl._protect and not queue:
+        if not valid:
+            return
+        # do nothing if motion is currently protected
+        if self._ctrl._protect:
             return
         # calculate desired rotation angle (radians)
         angle = angle*(pi/180)
@@ -445,39 +599,29 @@ class Motion:
         if right:
             angle = -angle
             ang_speed = -ang_speed
-        # store motion in queue if requested
-        if queue:
-            self._ctrl._motion_resume = ['ready']
-            self._ctrl._motion_queue.append(['rotate', True, ang_speed,
-                                             angle])
-            # ensure motion is protected before returning
-            while not self._ctrl._protect:
-                continue
+        # assign the command to 'motion_call' to test for repeats
+        motion_call = Move('rotate', protect=protect, ang_speed=ang_speed,
+                           angle=angle)
+        # return without calling motion if a repeat is being requested
+        if self._is_repeat_call(motion_call):
             return
-        # store command in _motion_curr attribute
-        else:
-            # assign the command to 'motion_call' to test for repeats
-            motion_call = ['rotate', protect, ang_speed, angle]
-            # return without calling motion if a repeat is being requested
-            if self._is_repeat_call(motion_call):
-                return
-            # if interrupting, store current motion to resume after rotation
-            self._ctrl._motion_resume = ['ready']
-            if self._ctrl._motion_state not in ('stop', 'pause', 'rotate'):
-                self._ctrl._motion_resume = self._ctrl._motion_prev.copy()
-            # check for running motion and ramp it down if needed
-            if self._ctrl._motion_state not in ('stop', 'pause', 'steer'):
-                self.pause()
-            # store command in motion_curr attribute
-            self._ctrl._motion_curr = motion_call
-            # clear out old queue when calling new non-sequence move
-            self._ctrl._motion_queue.clear()
-            # ensure motion has started before returning
-            while self._ctrl._motion_state != 'rotate':
-                continue
+        # if interrupting, store current motion to resume after rotation
+        self._ctrl._motion_resume = Move('ready')
+        if self._ctrl._motion_state not in ('stop', 'pause', 'rotate'):
+            self._ctrl._motion_resume = self._ctrl._motion_prev.copy()
+        # check for running motion and ramp it down if needed
+        if self._ctrl._motion_state not in ('stop', 'pause', 'steer'):
+            self.pause()
+        # store command in motion_curr attribute
+        self._ctrl._motion_curr = motion_call
+        # clear out any pending sequence when calling a new immediate move
+        self._ctrl._motion_queue.clear()
+        # ensure motion has started before returning
+        while self._ctrl._motion_state != 'rotate':
+            continue
 
-    def rotate_right(self, angle=0, ang_speed=cnst.ANG_SPD_MAX, protect=False,
-                     queue=False):
+    def rotate_right(self, angle=0, ang_speed=cnst.ANG_SPD_MAX,
+                     protect=False):
         """Commands clockwise rotation in place.
 
         Parameters
@@ -488,8 +632,6 @@ class Motion:
             The desired angular speed. Range from 30 to 180 deg/s.
         protect : bool, default=False
             Prevents interruption by another motion command.
-        queue : bool, default=False
-            Adds motion call to a queue for a sequence.
 
         Notes
         -----
@@ -498,7 +640,7 @@ class Motion:
 
         """
 
-        self.rotate_left(angle, ang_speed, protect, queue, right=True)
+        self.rotate_left(angle, ang_speed, protect, right=True)
 
     def rotate_to_heading(self, desired_heading, ang_speed=cnst.ANG_SPD_MAX,
                           direction=None):
@@ -527,11 +669,11 @@ class Motion:
 
         Note
         ----
-        There is no provision to queue this method in a sequence because
-        the calculation will be based on the heading before the sequence
-        starts, and likely not at the correct step in the sequence. Use
-        the robot.moving or robot.busy properties to wait for other
-        motion to finish and call this method at the time it is needed.
+        This method cannot be added to a sequence because the
+        calculation is based on the heading at the moment it is called,
+        and likely not at the correct step in the sequence. Use the
+        robot.moving or robot.busy properties to wait for other motion
+        to finish and call this method at the time it is needed.
         
         Examples
         --------
@@ -580,19 +722,17 @@ class Motion:
 
         # check for valid arguments
         try:
-            valid = self._valid_arguments('heading', heading=desired_heading,
-                                          ang_speed=ang_speed,
-                                          direction=direction)
+            valid = (_valid_heading(desired_heading)
+                    and _valid_ang_speed(ang_speed)
+                    and _valid_direction(direction))
         except:
             print('Error: invalid argument to .rotate_to_heading() method')
             return
-        else:
-            if not valid:
-                return
+        if not valid:
+            return
         # wait to avoid getting heading while _tracking() method is active
-        while self._ctrl._tracking_lock:
-            continue
-        current_heading = self._ctrl._heading * (180/pi)
+        with self._ctrl._tracking_lock:
+            current_heading = self._ctrl._heading * (180/pi)
         # calculate rotation angle to arrive at heading (final - intial)
         rotation_angle = desired_heading - current_heading
         # if rotation direction is set to left, ensure a positive angle
@@ -610,14 +750,13 @@ class Motion:
             rotation_angle += 360
         # command left rotation
         if rotation_angle > 0:
-            self.rotate_left(rotation_angle, ang_speed, True, False)
+            self.rotate_left(rotation_angle, ang_speed, protect=True)
         # command right rotation
         elif rotation_angle < 0:
-            self.rotate_right(-rotation_angle, ang_speed, True, False)
+            self.rotate_right(-rotation_angle, ang_speed, protect=True)
         
     def arc_forward(self, speed, radius, arc_length=0, arc_angle=0,
-                    sense='counterclockwise', protect=False, queue=False,
-                    reverse=False):
+                    sense='counterclockwise', protect=False, reverse=False):
         """Commands a forward (or reverse) arc path with constant speed.
 
         Parameters
@@ -639,8 +778,6 @@ class Motion:
             The rotation sense for robot to rotate.
         protect : bool, default=False
             Prevents interruption by another motion command.
-        queue : bool, default=False
-            Adds motion call to a queue for a sequence.
         reverse : bool, default=False
             Reverses the direction
 
@@ -671,14 +808,16 @@ class Motion:
 
         >>> robot.move.arc_forward(5, 20, arc_length=10, sense='clockwise')
 
-        Store moves in the queue to run a sequence. Note: protect is set
-        to True when using a queue to prevent later queue entries from
-        interrupting the earlier ones.
+        Build and run a sequence with the .sequence() method. Every move
+        in a sequence is automatically protected so that later steps
+        can't interrupt earlier ones.
 
-        >>> robot.move.arc_forward(10, 5, arc_angle=45, queue=True)
-        >>> robot.move.arc_reverse(10, 5, arc_angle=45, queue=True)
-        >>> robot.move.arc_forward(15, 25, arc_angle=30, sense='clockwise', queue=True)
-        >>> robot.move.arc_reverse(15, 25, arc_angle=30, sense='clockwise', queue=True)
+        >>> robot.move.sequence() \\
+        ...     .arc_forward(10, 5, arc_angle=45) \\
+        ...     .arc_reverse(10, 5, arc_angle=45) \\
+        ...     .arc_forward(15, 25, arc_angle=30, sense='clockwise') \\
+        ...     .arc_reverse(15, 25, arc_angle=30, sense='clockwise') \\
+        ...     .run()
 
         An unprotected move can be interrupted at any time with a new
         motion call. The control loop handles the smooth transitions.
@@ -693,19 +832,18 @@ class Motion:
 
         # check for valid arguments
         try:
-            valid = self._valid_arguments('arc', speed=speed, radius=radius,
-                                          arc_length=arc_length,
-                                          arc_angle=arc_angle, sense=sense,
-                                          protect=protect, queue=queue,
-                                          reverse=reverse)
+            valid = (_valid_speed(speed) and _valid_radius(radius)
+                    and _valid_arc_size(arc_length, arc_angle)
+                    and _valid_sense(sense)
+                    and _valid_bool(protect, 'protect')
+                    and _valid_bool(reverse, 'reverse'))
         except:
             print('Error: invalid argument to .arc_forward() method')
             return
-        else:
-            if not valid:
-                return
-        # do nothing if motion is protected and the command is not queued
-        if self._ctrl._protect and not queue:
+        if not valid:
+            return
+        # do nothing if motion is currently protected
+        if self._ctrl._protect:
             return
         # limit velocity as needed to avoid exceeding SPD_MAX on outer wheel
         if (1 + ((cnst.WHEEL_SPAN/2)/radius)) * speed > cnst.SPD_MAX:
@@ -719,34 +857,25 @@ class Motion:
         if reverse:
             speed = -speed
             arc_length = -arc_length
-        # stored motion in queue if requested
-        if queue:
-            self._ctrl._motion_queue.append(['arc', True, speed, radius,
-                                             arc_length, sense])
-            # ensure motion is protected before returning
-            while not self._ctrl._protect:
-                continue
+        # assign the command to 'motion_call' to test for repeats
+        motion_call = Move('arc', protect=protect, speed=speed,
+                           radius=radius, arc_length=arc_length, sense=sense)
+        # return without calling motion if a repeat is being requested
+        if self._is_repeat_call(motion_call):
             return
+        # check for running motion and ramp it down if needed
+        if self._ctrl._motion_state not in ('stop', 'pause', 'steer'):
+            self.pause()
         # store command in motion_curr attribute
-        else:
-            # assign the command to 'motion_call' to test for repeats
-            motion_call = ['arc', protect, speed, radius, arc_length, sense]
-            # return without calling motion if a repeat is being requested
-            if self._is_repeat_call(motion_call):
-                return
-            # check for running motion and ramp it down if needed
-            if self._ctrl._motion_state not in ('stop', 'pause', 'steer'):
-                self.pause()
-            # store command in motion_curr attribute
-            self._ctrl._motion_curr = motion_call
-            # clear out old queue if calling new non-sequence moves
-            self._ctrl._motion_queue.clear()
-            # ensure motion has started before returning
-            while self._ctrl._motion_state != 'arc':
-                continue
+        self._ctrl._motion_curr = motion_call
+        # clear out any pending sequence when calling a new immediate move
+        self._ctrl._motion_queue.clear()
+        # ensure motion has started before returning
+        while self._ctrl._motion_state != 'arc':
+            continue
 
     def arc_reverse(self, speed, radius, arc_length=0, arc_angle=0,
-                    sense='counterclockwise', protect=False, queue=False):
+                    sense='counterclockwise', protect=False):
         """Commands a reverse arc path with constant speed.
 
         Parameters
@@ -768,8 +897,6 @@ class Motion:
             The rotation sense for robot to rotate.
         protect : bool, default=False
             Prevents interruption by another motion command.
-        queue : bool, default=False
-            Adds motion call to a queue for a sequence.
 
         Notes
         -----
@@ -778,8 +905,8 @@ class Motion:
 
         """
 
-        self.arc_forward(speed, radius, arc_length, arc_angle, sense, protect,
-                         queue, reverse=True)
+        self.arc_forward(speed, radius, arc_length, arc_angle, sense,
+                         protect, reverse=True)
 
     def steer_left(self, radius, arc_angle=0, protect=False, right=False):
         """Steers left in an arc path at a discrete angle if already in motion.
@@ -807,6 +934,12 @@ class Motion:
         previous motion path. If no arc_angle is given (i.e., set to
         default of zero), the steering motion is a continuous arc and
         the previous motion cannot be resumed.
+
+        Note
+        ----
+        Steering only makes sense as an interruption of motion that is
+        already underway, so unlike .forward(), .rotate_left(), and
+        .arc_forward(), this method cannot be added to a sequence.
 
         Example
         -------
@@ -842,37 +975,35 @@ class Motion:
 
         # check for valid arguments
         try:
-            valid = self._valid_arguments('steer', radius=radius,
-                                          arc_angle=arc_angle, protect=protect,
-                                          right=right)
+            valid = (_valid_radius(radius) and _valid_angle(arc_angle)
+                    and _valid_bool(protect, 'protect')
+                    and _valid_bool(right, 'right'))
         except:
             print('Error: invalid argument to .steer_left() method')
             return
-        else:
-            if not valid:
-                return
+        if not valid:
+            return
         # do nothing if robot is not in linear or arc motion or is ramping down
         if (self._ctrl._protect
                 or self._ctrl._motion_state in ('stop', 'rotate', 'steer')
                 or self._ctrl._velo_set == 0):
             return
         # store previous motion to resume after steering
-        self._ctrl._motion_resume = self._ctrl._motion_prev.copy()        
+        self._ctrl._motion_resume = self._ctrl._motion_prev.copy()
         # calculate desired robot steering angle (rad)
         if self._ctrl._velo_set > 0:
             arc_length = radius * arc_angle*(pi/180)
-            reverse = False
         else:
             arc_length = -radius * arc_angle*(pi/180)
-            reverse = True
         # set the arc radius and rotation sense for steering
         if right:
             sense = 'clockwise'
         else:
             sense = 'counterclockwise'
         # assign the command to 'motion_call' to test for repeats
-        motion_call = ['steer', protect, self._ctrl._velo_set, radius,
-                       arc_length, sense]
+        motion_call = Move('steer', protect=protect,
+                           speed=self._ctrl._velo_set, radius=radius,
+                           arc_length=arc_length, sense=sense)
         # return without calling motion if a repeat is being requested
         if self._is_repeat_call(motion_call):
             return
@@ -943,14 +1074,13 @@ class Motion:
         """
 
         # check for valid speed input
-        if not isinstance(speed, (int, float)):
-            return(print('Error: speed must be a numeric value'))
-        elif speed < 0:
-            return(print('Error: speed must be positive'))
-        elif speed > cnst.SPD_MAX:
-            return(print('Error: maximum speed of robot is: %.2f cm/s' %cnst.SPD_MAX))
-        elif 0 <= speed < cnst.SPD_MIN:
-            return(print('Error: minimum speed of robot is: %.2f cm/s' %cnst.SPD_MIN))
+        try:
+            valid = _valid_speed(speed)
+        except:
+            print('Error: invalid argument to .change_speed() method')
+            return
+        if not valid:
+            return
         # check for compatible motion in progress
         if (self._ctrl._protect
                 or self._ctrl._motion_state in ('stop', 'pause', 'rotate')
@@ -961,116 +1091,57 @@ class Motion:
             speed = -speed
         # set new velocity
         self._ctrl._velo_set = speed
-    
-    @staticmethod
-    def _valid_arguments(motion_type, speed=None, distance=None,
-                         ang_speed=None, angle=None, radius=None,
-                         arc_length=None, arc_angle=None, sense=None,
-                         protect=None, queue=None, reverse=None, right=None,
-                         heading=None, position=None, direction=None):
-        """Checks for valid arguments from user calls.
 
-        Accepts all the parameters to .forward(), .reverse(),
-        .go_to_position(), .rotate_left(), .rotate_right(),
-        .rotate_to_heading(), .arc_forward(), .arc_reverse(),
-        .steer_left(), and .steer_right() methods.
+    def sequence(self):
+        """Starts building a sequence of discrete, protected moves.
+
+        Returns
+        -------
+        Sequence
+            A new, empty Sequence object tied to this robot's motion
+            system.
+
+        Notes
+        -----
+        A Sequence is a chain of discrete moves that run back-to-back:
+        once one move finishes, the control loop immediately starts the
+        next one. Each of the Sequence class's methods (.forward(),
+        .reverse(), .rotate_left(), .rotate_right(), .arc_forward(), and
+        .arc_reverse()) appends one move to the sequence and returns the
+        Sequence itself, so calls can be chained together. Nothing is
+        sent to the robot until .run() is called.
+
+        Examples
+        --------
+
+        Create an instance of PiBOT.
+
+        >>> from pibot import PiBOT
+        >>> robot = PiBOT()
+
+        Move 5 cm at 5 cm/s, reverse 5 cm at 5 cm/s, move 10 cm at
+        20 cm/s, then reverse 10 cm at 20 cm/s.
+
+        >>> robot.move.sequence() \\
+        ...     .forward(5, 5) \\
+        ...     .reverse(5, 5) \\
+        ...     .forward(20, 10) \\
+        ...     .reverse(20, 10) \\
+        ...     .run()
+
+        A Sequence can also be built up over several statements, which
+        is useful for building a sequence in a loop or from a list of
+        waypoints.
+
+        >>> path = robot.move.sequence()
+        >>> for distance in (5, 10, 15):
+        ...     path.forward(10, distance)
+        ...     path.rotate_left(90, 90)
+        >>> path.run()
 
         """
 
-        # general checks for most motion commands
-        if motion_type in ('linear', 'arc', 'position') and speed is None:
-            print('Error: speed must be set')
-        elif speed is not None and not isinstance(speed, (int, float)):
-            print('Error: speed must be a numeric value')
-        elif speed is not None and speed < 0:
-            print('Error: speed must be positive')
-        elif speed is not None and speed > cnst.SPD_MAX:
-            print('Error: maximum speed of robot is: %.2f cm/s' %cnst.SPD_MAX)
-        elif speed is not None and (0 <= speed < cnst.SPD_MIN):
-            print('Error: minimum speed of robot is: %.2f cm/s' %cnst.SPD_MIN)
-        elif distance is not None and not isinstance(distance, (int, float)):
-            print('Error: distance must be a numeric value')
-        elif distance is not None and distance != 0 and distance < 0:
-            print('Error: distance must be positive')
-        elif (motion_type not in ('steer', 'heading')
-              and protect != True and protect != False):
-            print('Error: protect must be a boolean value True or False')
-        elif (motion_type not in ('steer', 'heading', 'position')
-              and queue != True and queue != False):
-            print('Error: queue must be a boolean value True or False')
-        elif distance is not None and queue and distance == 0:
-            print('Error: only discrete moves in queue, set a distance')
-        elif motion_type in ('linear', 'arc') and (reverse != True
-                                                   and reverse != False):
-            print('Error: reverse must be a boolean value True or False')
-        elif motion_type == 'position' and position is None:
-            print('Error: desired position must be set')
-        elif position is not None and not isinstance(position, (list, tuple)):
-            print('Error: desired position must be a tuple or list')
-        elif position is not None and len(position) != 2:
-            print('Error: position must have two elements (i.e., x and y)')
-        elif (position is not None
-              and not all(isinstance(x, (int, float)) for x in position)):
-            print('Error: desired x-y coordinates must be numeric values')
-        elif heading is not None and not (-180 <= heading <= 180):
-            print('Error: desired heading must be in the range -180 to 180')
-        # specific checks for rotate motion
-        elif ang_speed is not None and not isinstance(ang_speed, (int, float)):
-            print('Error: ang_speed must be a numeric value')
-        elif ang_speed is not None and ang_speed < 0:
-            print('Error: ang_speed must be positive')
-        elif ang_speed is not None and ang_speed > cnst.ANG_SPD_MAX:
-            print('Error: maximum ang_speed is: %.2f deg/s' %cnst.ANG_SPD_MAX)
-        elif ang_speed is not None and ang_speed < cnst.ANG_SPD_MIN:
-            print('Error: minimum ang_speed is: %.2f deg/s' %cnst.ANG_SPD_MIN)
-        elif angle is not None and not isinstance(angle, (int, float)):
-            print('Error: angle must be a numeric value')
-        elif angle is not None and angle < 0:
-            print('Error: angle must be positive')
-        elif angle is not None and angle > cnst.ANG_MAX:
-            print('Error: maximum rotation angle is %d degrees' %cnst.ANG_MAX)
-        elif motion_type == 'rotate' and right != True and right != False:
-            print('Error: right must be a boolean value True or False')
-        elif motion_type == 'heading' and heading is None:
-            print('Error: desired heading must be set')
-        elif heading is not None and not isinstance(heading, (int, float)):
-            print('Error: desired heading must be a numeric value')
-        elif heading is not None and not (-180 <= heading <= 180):
-            print('Error: desired heading must be in the range -180 to 180')
-        elif direction is not None and (direction != 'left'
-                                        and direction != 'right'):
-            print("Error: rotation direction must be 'left', 'right', or None")
-        # specific checks for arc motion
-        elif motion_type in ('arc' or 'steer') and radius is None:
-            print('Error: radius must be set')
-        elif radius is not None and not isinstance(radius, (int, float)):
-            print('Error: radius must be a numeric value')
-        elif radius is not None and radius < cnst.MIN_RADIUS:
-            print('Error: minimum radius is %.1f cm' %cnst.MIN_RADIUS)
-        elif arc_length is not None and not isinstance(arc_length, (int,
-                                                                    float)):
-            print('Error: arc_length must be a numeric value')        
-        elif arc_length is not None and arc_length < 0:
-            print('Error: arc_length must be positive')
-        elif arc_angle is not None and not isinstance(arc_angle, (int, float)):
-            print('Error: arc_angle must be a numeric value')        
-        elif arc_angle is not None and (0 > arc_angle > cnst.ANG_MAX):
-            print('Error: arc_angle must be positive and <= %d degrees' %cnst.ANG_MAX)
-        elif motion_type == 'arc' and (sense != 'clockwise'
-                                       and sense != 'counterclockwise'):
-            print("Error: sense must be 'clockwise' or 'counterclockwise'")
-        elif motion_type == 'arc' and arc_length != 0 and arc_angle != 0:
-            print('Error: arc_length and arc_angle cannot both be set')
-        elif queue and arc_length == 0 and arc_angle == 0:
-            print('Error: set value of arc_length or arc_angle for queue')
-        # specific check for steer motion
-        elif motion_type == 'steer' and right != True and right != False:
-            print('Error: right must be a boolean value True or False')
-        else:
-            # if no invalid arguments are found, return True
-            return True
-        # if an invalid argument is found, return False
-        return False
+        return Sequence(self)
 
     def _is_repeat_call(self, motion_call):
         """Checks for repeat user calls with the same arguments.
@@ -1081,9 +1152,302 @@ class Motion:
         """
 
         # wait to avoid testing during update of control loop state
-        while self._ctrl._motion_curr[0] != 'ready':
+        while self._ctrl._motion_curr.kind != 'ready':
             continue
         # once update is complete, check for repeat motion call
         if (self._ctrl._motion_state not in ('stop', 'pause')
                 and motion_call == self._ctrl._motion_prev):
             return True
+        return False
+
+
+class Sequence:
+    """
+    Builds and runs an ordered chain of discrete, protected moves.
+
+    ...
+
+    Parameters
+    ----------
+    motion : Motion
+        The Motion instance (i.e., "robot.move") this sequence belongs
+        to. Normally a Sequence is created with the .sequence() method
+        rather than directly.
+
+    Notes
+    -----
+    Each move-adding method (.forward(), .reverse(), .rotate_left(),
+    .rotate_right(), .arc_forward(), and .arc_reverse()) validates its
+    arguments, appends one move to the sequence, and returns the
+    Sequence itself so calls can be chained. Only discrete moves (a
+    nonzero distance, angle, arc_length, or arc_angle) are allowed,
+    since a continuous move would never finish and the rest of the
+    sequence would never run.
+
+    No move is sent to the robot until .run() is called. This keeps
+    "describing a plan" (building the Sequence) separate from
+    "carrying it out" (calling .run()), so a sequence built across
+    several statements, a loop, or a function is only ever handed to
+    the control loop once, as a complete, ordered chain.
+
+    Examples
+    --------
+
+    Create an instance of PiBOT.
+
+    >>> from pibot import PiBOT
+    >>> robot = PiBOT()
+
+    Trace out a square with 20 cm sides.
+
+    >>> square = robot.move.sequence()
+    >>> for side in range(4):
+    ...     square.forward(15, 20)
+    ...     square.rotate_left(90, 90)
+    >>> square.run()
+
+    """
+
+    def __init__(self, motion):
+        """Creates an empty sequence tied to the given Motion instance."""
+
+        self._motion = motion
+        self._moves = []
+
+    def forward(self, speed, distance, reverse=False):
+        """Adds a discrete forward (or reverse) move to the sequence.
+
+        Parameters
+        ----------
+        speed : int or float
+            The desired speed in cm/s. Range from 5 to 30 cm/s.
+        distance : int or float
+            The desired distance to travel in cm. Must be nonzero.
+        reverse : bool, default=False
+            Reverses the direction.
+
+        Returns
+        -------
+        Sequence
+            This same Sequence, so calls can be chained together.
+
+        """
+
+        try:
+            valid = (_valid_speed(speed)
+                    and _valid_distance(distance, required=True)
+                    and _valid_bool(reverse, 'reverse'))
+        except:
+            print('Error: invalid argument to .forward() sequence step')
+            return self
+        if not valid:
+            return self
+        if reverse:
+            speed = -speed
+            distance = -distance
+        self._moves.append(Move('linear', protect=True, speed=speed,
+                                distance=distance))
+        return self
+
+    def reverse(self, speed, distance):
+        """Adds a discrete reverse move to the sequence.
+
+        Parameters
+        ----------
+        speed : int or float
+            The desired speed in cm/s. Range from 5 to 30 cm/s.
+        distance : int or float
+            The desired distance to travel in cm. Must be nonzero.
+
+        Returns
+        -------
+        Sequence
+            This same Sequence, so calls can be chained together.
+
+        Notes
+        -----
+        A reverse move is generated using the .forward() method with
+        the reverse parameter set to True.
+
+        """
+
+        return self.forward(speed, distance, reverse=True)
+
+    def rotate_left(self, angle, ang_speed=cnst.ANG_SPD_MAX, right=False):
+        """Adds a discrete counterclockwise rotation to the sequence.
+
+        Parameters
+        ----------
+        angle : int or float, maximum 720
+            The desired rotation angle in degrees. Must be nonzero.
+        ang_speed : int or float, default=180 deg/s
+            The desired angular speed. Range from 30 to 180 deg/s.
+        right : bool, default=False
+            Commands right (clockwise) rotation instead of left.
+
+        Returns
+        -------
+        Sequence
+            This same Sequence, so calls can be chained together.
+
+        """
+
+        try:
+            valid = (_valid_angle(angle, required=True)
+                    and _valid_ang_speed(ang_speed)
+                    and _valid_bool(right, 'right'))
+        except:
+            print('Error: invalid argument to .rotate_left() sequence step')
+            return self
+        if not valid:
+            return self
+        angle = angle*(pi/180)
+        ang_speed = ang_speed*(pi/180)
+        if right:
+            angle = -angle
+            ang_speed = -ang_speed
+        self._moves.append(Move('rotate', protect=True, ang_speed=ang_speed,
+                                angle=angle))
+        return self
+
+    def rotate_right(self, angle, ang_speed=cnst.ANG_SPD_MAX):
+        """Adds a discrete clockwise rotation to the sequence.
+
+        Parameters
+        ----------
+        angle : int or float, maximum 720
+            The desired rotation angle in degrees. Must be nonzero.
+        ang_speed : int or float, default=180 deg/s
+            The desired angular speed. Range from 30 to 180 deg/s.
+
+        Returns
+        -------
+        Sequence
+            This same Sequence, so calls can be chained together.
+
+        Notes
+        -----
+        Right rotation is generated using the .rotate_left() method
+        with the "right" parameter set to True.
+
+        """
+
+        return self.rotate_left(angle, ang_speed, right=True)
+
+    def arc_forward(self, speed, radius, arc_length=0, arc_angle=0,
+                    sense='counterclockwise', reverse=False):
+        """Adds a discrete forward (or reverse) arc move to the sequence.
+
+        Parameters
+        ----------
+        speed : int or float
+            The desired speed in cm/s. Range from 5 to 30 cm/s.
+        radius : int or float
+            The desired arc radius in cm. Must be positive. Minimum
+            radius is 0.5 cm.
+        arc_length : int or float, default=0
+            The desired arc length to travel in cm. Either arc_length
+            or arc_angle must be set (but not both).
+        arc_angle : int or float, default=0, maximum 720
+            The desired arc angle to travel in degrees. Either
+            arc_length or arc_angle must be set (but not both).
+        sense : {'counterclockwise', 'clockwise'}
+            The rotation sense for robot to rotate.
+        reverse : bool, default=False
+            Reverses the direction.
+
+        Returns
+        -------
+        Sequence
+            This same Sequence, so calls can be chained together.
+
+        """
+
+        try:
+            valid = (_valid_speed(speed) and _valid_radius(radius)
+                    and _valid_arc_size(arc_length, arc_angle, required=True)
+                    and _valid_sense(sense)
+                    and _valid_bool(reverse, 'reverse'))
+        except:
+            print('Error: invalid argument to .arc_forward() sequence step')
+            return self
+        if not valid:
+            return self
+        # limit velocity as needed to avoid exceeding SPD_MAX on outer wheel
+        if (1 + ((cnst.WHEEL_SPAN/2)/radius)) * speed > cnst.SPD_MAX:
+            speed = cnst.SPD_MAX / (1 + ((cnst.WHEEL_SPAN/2)/radius))
+            if speed/radius > cnst.ANG_SPD_MAX:
+                speed = radius * cnst.ANG_SPD_MAX
+        # calculate arc length from desired arc angle
+        if arc_angle != 0:
+            arc_length = radius * arc_angle*(pi/180)
+        if reverse:
+            speed = -speed
+            arc_length = -arc_length
+        self._moves.append(Move('arc', protect=True, speed=speed,
+                                radius=radius, arc_length=arc_length,
+                                sense=sense))
+        return self
+
+    def arc_reverse(self, speed, radius, arc_length=0, arc_angle=0,
+                    sense='counterclockwise'):
+        """Adds a discrete reverse arc move to the sequence.
+
+        Parameters
+        ----------
+        speed : int or float
+            The desired speed in cm/s. Range from 5 to 30 cm/s.
+        radius : int or float
+            The desired arc radius in cm. Must be positive. Minimum
+            radius is 0.5 cm.
+        arc_length : int or float, default=0
+            The desired arc length to travel in cm. Either arc_length
+            or arc_angle must be set (but not both).
+        arc_angle : int or float, default=0, maximum 720
+            The desired arc angle to travel in degrees. Either
+            arc_length or arc_angle must be set (but not both).
+        sense : {'counterclockwise', 'clockwise'}
+            The rotation sense for robot to rotate.
+
+        Returns
+        -------
+        Sequence
+            This same Sequence, so calls can be chained together.
+
+        Notes
+        -----
+        A reverse arc move is generated using the .arc_forward() method
+        with the reverse parameter set to True.
+
+        """
+
+        return self.arc_forward(speed, radius, arc_length, arc_angle, sense,
+                                reverse=True)
+
+    def run(self):
+        """Sends the sequence to the control loop and starts it running.
+
+        Notes
+        -----
+        If another unprotected move is currently active, it is
+        interrupted immediately and the sequence starts in its place,
+        the same way any new unprotected motion call would interrupt
+        it. If another protected move or sequence is currently active,
+        this sequence is appended after it and will start automatically
+        once the current one finishes.
+
+        After .run() returns, the moves already added to this Sequence
+        have been sent to the robot; building can continue by adding
+        more moves and calling .run() again, which will append them
+        after any of this sequence's own moves that are still pending.
+
+        """
+
+        if not self._moves:
+            return
+        ctrl = self._motion._ctrl
+        ctrl._motion_queue.extend(self._moves)
+        self._moves = []
+        # ensure the first move of the sequence has started before returning
+        while not ctrl._protect:
+            continue

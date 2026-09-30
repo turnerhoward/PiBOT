@@ -45,6 +45,9 @@ LIDAR = 16           # GPIO for LIDAR input
 SAMPLES_LIDAR = 1    # number of samples to average for LIDAR reading
 LIDAR_MAX = 130.5    # maximum value recorded from LIDAR read
 LIDAR_OFFSET = 9.5   # offset in cm from sensor to robot center of rotation
+LIDAR_OUT_OF_RANGE = LIDAR_MAX + LIDAR_OFFSET  # value LidarSensor.read()
+                                                # returns when nothing is
+                                                # detected within range
 BEAM_ANGLE = 5       # approximate effective beam angle of lidar
 SLOPE_THRESHOLD = 1  # minimum threshold in lidar scan derivative for a peak
 WHISKER_LEFT = 6     # GPIO for left whisker

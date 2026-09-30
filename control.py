@@ -5,6 +5,7 @@ from math import pi, sin, cos
 from utime import ticks_ms, ticks_diff, ticks_add
 from machine import Pin, PWM
 from rp2 import StateMachine, asm_pio, PIO
+from commands import Move
 
 
 class Control:
@@ -55,31 +56,37 @@ class Control:
         self._motion_state = 'stop' 
         # variables to store user requested setpoints
         self._motion_queue = []
-        self._motion_curr = ['ready']
-        self._motion_prev = ['ready']
-        self._motion_resume = ['ready']
+        self._motion_curr = Move('ready')
+        self._motion_prev = Move('ready')
+        self._motion_resume = Move('ready')
         # active setpoint values
+        # NOTE: 'linear', 'arc', and 'steer' motion share _dist_set and
+        # _dist_curr, since arc length traveled by the robot's center
+        # point is calculated the same way (integrating velo_curr) for
+        # all three; only 'rotate' needs its own _ang_set/_ang_curr,
+        # since it is driven by angular velocity instead of speed
         self._velo_set = 0
         self._dist_set = 0
         self._ang_velo_set = 0
         self._ang_set = 0
-        self._arc_len_set = 0
         # current values to compare to setpoint
         self._velo_curr = 0
         self._dist_curr = 0
         self._ang_velo_curr = 0
         self._ang_curr = 0
-        self._arc_len_curr = 0
-        # wheel differential values for arc and steer
-        self._diff_L = 0
-        self._diff_R = 0
+        # signed curvature (1/radius) for arc and steer motion; zero for
+        # linear and rotate motion. See _set_curvature() and
+        # _motion_control() for how this drives the wheel calculations.
+        self._curvature = 0
         # ATTRIBUTES FOR TRACKING POSITION OF ROBOT ON FIELD
         # stores current x, y coordinate position of the center of wheelbase
         self._position = [0, 0]
         # stores current heading angle of robot
         self._heading = 0
         # lock to avoid setting heading or position during _tracking() call
-        self._tracking_lock = False
+        # (a real mutex instead of a busy-wait flag, so getters and setters
+        # in PiBOT and Motion block briefly instead of spinning the core)
+        self._tracking_lock = _thread.allocate_lock()
         # STARTS THREAD ON SECOND CORE FOR MOTION CONTROL
         # set threshold for memory allocation to force a garbage collection
         gc.threshold(cnst.MEM_THRESH)
@@ -94,87 +101,58 @@ class Control:
         if self._motion_state in ('stop', 'pause') and not self._motion_queue:
             return
         # set the current commanded motion to pause
-        self._motion_curr = ['pause']
+        self._motion_curr = Move('pause')
 
     def _resume(self):
-        """Smoothly resumes motion after a pause."""
+        """Smoothly resumes motion after a pause.
+
+        Notes
+        -----
+        The kind of the previous move (self._motion_prev.kind) selects
+        which "current vs. set" pair of attributes describes how much
+        of that move is left: distance for 'linear', angle for
+        'rotate', and arc_length for both 'arc' and 'steer'. That kind
+        also selects the corresponding field on the resumed Move that
+        gets reduced to the remaining amount.
+
+        """
 
         # if already moving or ready for new command, return without resuming
-        if self._motion_state != 'pause': # or self._motion_curr[0] == 'ready':
+        if self._motion_state != 'pause':
             return
-        # check for queued sequences and pop one out
-        elif self._motion_queue and self._motion_state != 'pause':
+        # determine the setpoint, current value, and threshold to check for
+        # remaining motion based on the kind of move that was interrupted.
+        # 'linear', 'arc', and 'steer' all share _dist_set/_dist_curr,
+        # since each tracks the same thing: distance traveled by the
+        # robot's center point along its path
+        kind = self._motion_prev.kind
+        if kind == 'rotate':
+            setpoint, current, threshold = (self._ang_set, self._ang_curr,
+                                            0.0175)
+        else:
+            setpoint, current, threshold = (self._dist_set, self._dist_curr,
+                                            0.1)
+        # if the move was continuous (no setpoint), simply restore it
+        if setpoint == 0:
+            self._motion_curr = self._motion_prev.copy()
+            return
+        # if the interrupted discrete move still has distance/angle
+        # remaining, resume it with only the remaining amount
+        remaining = setpoint - current
+        if abs(remaining) > threshold:
+            self._motion_curr = self._motion_prev.copy()
+            if kind == 'rotate':
+                self._motion_curr.angle = remaining
+            elif kind == 'linear':
+                self._motion_curr.distance = remaining
+            else:
+                self._motion_curr.arc_length = remaining
+        # if the move had actually finished, start the next queued move
+        elif self._motion_queue:
             self._motion_curr = self._motion_queue.pop(0)
-        # check for stopped linear move
-        elif self._motion_prev[0] == 'linear':
-            # if discrete linear move
-            if self._dist_set != 0 :
-                # if above threshold, calculate remaining distance
-                if abs(self._dist_set - self._dist_curr) > 0.1:
-                    self._motion_curr = self._motion_prev.copy()
-                    self._motion_curr[3] = self._dist_set - self._dist_curr
-                # if below threshold and there is queued motion, pop one out
-                elif self._motion_queue:
-                    self._motion_curr = self._motion_queue.pop(0)
-                # otherwise, there is nothing left to resume
-                else:
-                    self._motion_curr = ['ready']
-            # if the motion was continuous, restore from previous
-            else:
-                self._motion_curr = self._motion_prev.copy()
-        # check for stopped rotation
-        elif self._motion_prev[0] == 'rotate':
-            # if discrete rotation
-            if self._ang_set != 0 :
-                # if above threshold, calculate remaining angle
-                if abs(self._ang_set - self._ang_curr) > 0.0175:
-                    self._motion_curr = self._motion_prev.copy()
-                    self._motion_curr[3] = self._ang_set - self._ang_curr
-                # if below threshold and there is queued motion, pop one out
-                elif self._motion_queue:
-                    self._motion_curr = self._motion_queue.pop(0)
-                # otherwise, there is nothing left to resume
-                else:
-                    self._motion_curr = ['ready']
-            # if the motion was continuous, restore from previous
-            else:
-                self._motion_curr = self._motion_prev.copy()
-        # check for stopped arc move
-        elif self._motion_prev[0] == 'arc':
-            # if discrete arc move
-            if self._arc_len_set != 0:
-                # if above threshold, calculate remaining arc length
-                if abs(self._arc_len_set - self._arc_len_curr) > 0.1:
-                    self._motion_curr = self._motion_prev.copy()
-                    self._motion_curr[4] = (self._arc_len_set
-                                            - self._arc_len_curr)
-                # if below threshold and there is queued motion, pop one out
-                elif self._motion_queue:
-                    self._motion_curr = self._motion_queue.pop(0)
-                # otherwise, there is nothing left to resume
-                else:
-                    self._motion_curr = ['ready']
-            # if the motion was continuous, restore from previous
-            else:
-                self._motion_curr = self._motion_prev.copy()
-        # check for stopped steer move
-        elif self._motion_prev[0] == 'steer':
-            # if discrete steer move
-            if self._arc_len_set != 0:
-                # if above threshold, calculate remaining arc length
-                if abs(self._arc_len_set - self._arc_len_curr) > 0.1:
-                    self._motion_curr = self._motion_prev.copy()
-                    self._motion_curr[4] = (self._arc_len_set
-                                                     - self._arc_len_curr)
-                # if below threshold and there is queued motion, pop one out
-                elif self._motion_queue:
-                    self._motion_curr = self._motion_queue.pop(0)
-                # otherwise, there is nothing left to resume
-                else:
-                    self._motion_curr = ['ready']
-            # if the motion was continuous, restore from previous
-            else:
-                self._motion_curr = self._motion_prev.copy()
+        # otherwise, there is nothing left to resume
+        else:
+            self._motion_curr = Move('ready')
 
     def _motion_thread(self):
         """Starts a thread to run control loop on second core."""
@@ -230,22 +208,17 @@ class Control:
                     and (not self._protect
                          or (self._protect and self._motion_state == 'stop'))):
                 self._motion_curr = self._motion_queue.pop(0)
+                # a move popped from the queue is always a fresh, planned
+                # step in a sequence, so it should never trigger the
+                # rotate "resume the motion I interrupted" behavior below
+                self._motion_resume = Move('ready')
                 self._update_state()
             # update state when _motion_curr is not in standby (i.e., 'ready')
-            if self._motion_curr[0] != 'ready':
+            if self._motion_curr.kind != 'ready':
                 self._update_state()
-            # check for rotate command
-            if self._motion_state == 'rotate':
-                self._rotate_control()
-            # check for linear command (i.e, forward or reverse)
-            elif self._motion_state == 'linear':
-                self._forward_control()
-            # check for arc command
-            elif self._motion_state == 'arc':
-                self._arc_control()
-            # check for steer command
-            elif self._motion_state == 'steer':
-                self._steer_control()
+            # take a step of active motion (rotate, linear, arc, or steer)
+            if self._motion_state in ('rotate', 'linear', 'arc', 'steer'):
+                self._motion_control()
             # take control action in each loop
             self._control_action()
             # check for required buzzer and led pulses
@@ -288,269 +261,226 @@ class Control:
 
         """
 
-        # create local copy to avoid changing state during update
-        motion_curr = self._motion_curr.copy()
-        # reset the wheel angles just before starting new motion
-        if motion_curr[0] in ('linear', 'rotate', 'arc'):
-            self._theta_L, self._theta_R = self._motors._read_angles()
-            # reset previous wheel angles for tracking calculation
-            self._theta_prev_L = self._theta_L
-            self._theta_prev_R = self._theta_R
-        # transition robot to stop state by setting velocity to zero
-        if motion_curr[0] == 'pause':
+        # a pause only needs the kind of the command, and this method runs
+        # on every time step while a pause is ramping down, so handle it
+        # here without making a copy (which would allocate every step)
+        motion_curr = self._motion_curr
+        if motion_curr.kind == 'pause':
+            # transition robot to stop state by setting velocity to zero
             if self._velo_set != 0 or self._ang_velo_set != 0:
                 self._velo_set = 0
                 self._ang_velo_set = 0
             return
+        # create local copy to avoid changing state during update
+        motion_curr = motion_curr.copy()
+        # reset the wheel angles just before starting new motion
+        if motion_curr.kind in ('linear', 'rotate', 'arc'):
+            self._theta_L, self._theta_R = self._motors._read_angles()
+            # reset previous wheel angles for tracking calculation
+            self._theta_prev_L = self._theta_L
+            self._theta_prev_R = self._theta_R
         # transition robot to linear motion
-        elif motion_curr[0] == 'linear':
-            self._protect = motion_curr[1]
-            self._velo_set = motion_curr[2]
-            self._dist_set = motion_curr[3]
+        if motion_curr.kind == 'linear':
+            self._protect = motion_curr.protect
+            self._velo_set = motion_curr.speed
+            self._curvature = 0
+            self._dist_set = motion_curr.distance
             self._dist_curr = 0
             self._motion_state = 'linear'
         # transition robot to rotate motion
-        elif motion_curr[0] == 'rotate':
-            self._protect = motion_curr[1]
-            self._ang_velo_set = motion_curr[2]
-            self._ang_set = motion_curr[3]
+        elif motion_curr.kind == 'rotate':
+            self._protect = motion_curr.protect
+            self._ang_velo_set = motion_curr.ang_speed
+            self._ang_set = motion_curr.angle
             self._ang_curr = 0
             self._motion_state = 'rotate'
         # transition robot to arc motion
-        elif motion_curr[0] == 'arc':
-            self._protect = motion_curr[1]
-            self._velo_set = motion_curr[2]
-            self._arc_len_set = motion_curr[4]
-            self._wheel_diff(motion_curr[3], motion_curr[5])
-            self._arc_len_curr = 0
+        elif motion_curr.kind == 'arc':
+            self._protect = motion_curr.protect
+            self._velo_set = motion_curr.speed
+            self._set_curvature(motion_curr.radius, motion_curr.sense)
+            self._dist_set = motion_curr.arc_length
+            self._dist_curr = 0
             self._motion_state = 'arc'
         # transition robot to steer motion
-        elif motion_curr[0] == 'steer':
-            # store current progress of discrete linear or arc motion
-            if self._motion_prev[0] != 'steer':
-                if self._motion_resume[0] =='linear':
-                    self._motion_resume[3] = self._dist_set - self._dist_curr
-                    self._dist_curr = 0
-                elif self._motion_resume[0] == 'arc':
-                    self._motion_resume[4] = (self._arc_len_set
-                                              - self._arc_len_curr)
-                    self._arc_len_curr = 0
+        elif motion_curr.kind == 'steer':
+            # snapshot how much of the interrupted linear/arc move is
+            # left, so it can be resumed later; only capture this on the
+            # first steer of a chain of steers (a later steer's own
+            # "previous" motion is itself a steer, so there's nothing new
+            # to capture, and _dist_curr will be reset for it below just
+            # like any other transition)
+            if self._motion_prev.kind != 'steer':
+                if self._motion_resume.kind == 'linear':
+                    self._motion_resume.distance = (self._dist_set
+                                                     - self._dist_curr)
+                elif self._motion_resume.kind == 'arc':
+                    self._motion_resume.arc_length = (self._dist_set
+                                                       - self._dist_curr)
             # update motion parameters based on user command
-            self._velo_set = motion_curr[2]
-            self._arc_len_set = motion_curr[4]
-            self._wheel_diff(motion_curr[3], motion_curr[5])
-            self._arc_len_curr = 0
+            self._velo_set = motion_curr.speed
+            self._set_curvature(motion_curr.radius, motion_curr.sense)
+            self._dist_set = motion_curr.arc_length
+            self._dist_curr = 0
             self._motion_state = 'steer'
         # reset _motion_prev before returning to control loop
         if self._motion_state != 'stop':
             self._motion_prev = motion_curr.copy()
-            self._motion_curr = ['ready']
+            self._motion_curr = Move('ready')
 
-    def _forward_control(self):
-        """Calculates kinematics and wheel rotation for linear motion.
-
-        Notes
-        -----
-        At each time step, the velocity, distance, and wheel angles are
-        calculated to command a forward (or reverse) linear path. The
-        velocity ramps up at the start and down at the end of the path
-        to approximate constant acceleration.
-
-        """
-
-        # check for end of discrete move
-        if self._velo_set == 0 and self._velo_curr == 0:
-            # if stopped short using pause method, return
-            if self._motion_curr[0] == 'pause':
-                self._motion_curr = ['ready'] # swapped to avoid race condition
-                if not self._motion_queue:
-                    self._protect = False
-                self._motion_state = 'pause' # swapped to avoid race condition
-                return
-            # if actual end of move, check for remaining error and adjust
-            elif abs(self._dist_set - self._dist_curr) > 0.1:
-                self._theta_L += (self._dist_set
-                                  - self._dist_curr) / (cnst.WHEEL_DIA/2)
-                self._theta_R += (self._dist_set
-                                  - self._dist_curr) / (cnst.WHEEL_DIA/2)
-                self._dist_curr = self._dist_set
-                return
-            # at end, set motion_state to 'stop' to end move
-            else:
-                self._motion_state = 'stop'
-                if not self._motion_queue:
-                    self._protect = False
-                return
-        # ramp the velocity up or down or hold steady at setpoint
-        self._velocity_ramp()
-        # calculate current distance for discrete move
-        if self._dist_set != 0:
-            self._dist_curr += self._velo_curr * cnst.T_STEP
-            # calculate remaining and rampdown distances
-            dist_remain = self._dist_set - self._dist_curr
-            dist_ramp = self._velo_curr**2 / (2*cnst.ACC_MAX)
-            # check for ramp down at end of move
-            if ((self._velo_set > 0 and dist_remain <= dist_ramp)
-                    or (self._velo_set < 0 and dist_remain >= -dist_ramp)):
-                self._velo_set = 0
-        # calculate commanded wheel angles from velocity and time step
-        self._theta_L += (self._velo_curr * cnst.T_STEP) / (cnst.WHEEL_DIA/2)
-        self._theta_R += (self._velo_curr * cnst.T_STEP) / (cnst.WHEEL_DIA/2)
-
-    def _rotate_control(self):
-        """Calculates kinematics and wheel rotation for rotation.
+    def _motion_control(self):
+        """Calculates kinematics and wheel rotation for all active motion.
 
         Notes
         -----
-        At each time step, the angular velocity, angle, and wheel angles
-        are calculated to command rotation in place. The wheel diameter
-        and span are used to determine the amount of wheel rotation.
-        The angular speed ramps up at the start and down at the end of
-        the rotation to approximate constant angular acceleration.
+        Every motion the robot can perform is a combination of two
+        ramped quantities: a linear speed (self._velo_curr, in cm/s)
+        and an angular velocity (self._ang_velo_curr, in rad/s). The
+        commanded wheel speeds are always:
+
+            wheel_R = velo_curr + ang_velo_curr * (WHEEL_SPAN/2)
+            wheel_L = velo_curr - ang_velo_curr * (WHEEL_SPAN/2)
+
+        'linear' motion (forward/reverse) is the case where
+        ang_velo_curr stays at zero throughout (self._curvature is
+        zero). 'rotate' is the case where velo_curr stays at zero and
+        ang_velo_curr ramps on its own, using the same kind of
+        trapezoidal ramp as linear speed, but with the angular
+        acceleration constant ANG_ACC in place of ACC_MAX.
+
+        'arc' and 'steer' motion both ramp velo_curr as usual and
+        derive ang_velo_curr from it at every time step as
+        velo_curr * self._curvature, where curvature is the signed
+        reciprocal of the requested radius (see _set_curvature()). A
+        steer command differs from an arc command only in how it is
+        set up in _update_state(): steer changes self._curvature
+        without resetting velo_curr, so the robot's speed never dips
+        at the moment a steering correction begins, and it ends by
+        switching directly to a new curvature (see below) rather than
+        by ramping speed down to zero.
+
+        This single method replaces what were, in an earlier version
+        of this library, four separate control methods (one each for
+        linear, rotate, arc, and steer motion) that largely duplicated
+        the same velocity-ramping and wheel-angle calculations.
 
         """
 
-        # check for end of rotation and resume linear or arc motion as needed
-        if self._ang_velo_set == 0 and self._ang_velo_curr == 0:
-            # if stopped short using pause method, return
-            if self._motion_curr[0] == 'pause':
-                self._motion_curr = ['ready'] # swapped to avoid race condition
-                if not self._motion_queue:
-                    self._protect = False
-                self._motion_state = 'pause' # swapped to avoid race condition
-                return
-            # if actual end of rotation, check for remaining error and adjust
-            elif abs(self._ang_set - self._ang_curr) > 0.0087:
-                self._theta_R += ((self._ang_set - self._ang_curr)
-                                  * (cnst.WHEEL_SPAN/cnst.WHEEL_DIA))
-                self._theta_L -= ((self._ang_set - self._ang_curr)
-                                  * (cnst.WHEEL_SPAN/cnst.WHEEL_DIA))
-                self._ang_curr = self._ang_set
-                return
-            # resume interrupted linear or arc motion
-            elif self._motion_resume[0] != 'ready':
-                self._motion_prev = self._motion_resume.copy()
-                self._motion_resume = ['ready']
-                self._motion_state = 'pause'
-                self._motion_curr = ['pause']
-                self._resume()
-            # at end, set motion_state to 'stop' to end rotation
-            else:
-                self._motion_state = 'stop'
-                if not self._motion_queue:
-                    self._protect = False
-                return
-        # ramp the angular velocity up or down or hold steady at setpoint
-        self._ang_velocity_ramp()
-        # calculate current rotation angle for discrete move
-        if self._ang_set != 0:
-            self._ang_curr += self._ang_velo_curr * cnst.T_STEP
-            # calculate remaining and rampdown angles
-            ang_remain = self._ang_set - self._ang_curr
-            ang_ramp = self._ang_velo_curr**2 / (2*cnst.ANG_ACC*(pi/180))
-            # check for ramp down at end of rotation
-            if ((self._ang_velo_set > 0 and ang_remain <= ang_ramp)
-                    or (self._ang_velo_set < 0 and ang_remain >= -ang_ramp)):
-                self._ang_velo_set = 0
-        # calculate commanded wheel angles
-        self._theta_R += (self._ang_velo_curr * cnst.T_STEP
-                          * (cnst.WHEEL_SPAN/cnst.WHEEL_DIA))
-        self._theta_L -= (self._ang_velo_curr * cnst.T_STEP
-                          * (cnst.WHEEL_SPAN/cnst.WHEEL_DIA))
+        kind = self._motion_state
+        # rotation ramps ang_velo_curr directly; every other kind ramps
+        # velo_curr and derives ang_velo_curr from it further below
+        if kind == 'rotate':
+            driven_set, driven_curr = self._ang_velo_set, self._ang_velo_curr
+        else:
+            driven_set, driven_curr = self._velo_set, self._velo_curr
 
-    def _arc_control(self):
-        """Calculates kinematics and wheel rotation for arc motion.
-
-        Notes
-        -----
-        At each time step, the velocity, arc length, and wheel angles
-        are calculated to command a forward (or reverse) arc path. The
-        velocity ramps up at the start and down at the end of the path
-        to approximate constant acceleration.
-
-        """
-
-        # check for end of discrete move
-        if self._velo_set == 0 and self._velo_curr == 0:
-            # if stopped short using pause method, return
-            if self._motion_curr[0] == 'pause':
-                self._motion_curr = ['ready'] # swapped to avoid race condition
-                if not self._motion_queue:
-                    self._protect = False
-                self._motion_state = 'pause' # swapped to avoid race condition
-                return
-            # if actual end of move, check for remaining error and adjust
-            elif abs(self._arc_len_set - self._arc_len_curr) > 0.1:
-                self._theta_L += ((self._diff_L * (self._arc_len_set
-                                                   - self._arc_len_curr))
-                                  / (cnst.WHEEL_DIA/2))
-                self._theta_R += ((self._diff_R * (self._arc_len_set
-                                                   - self._arc_len_curr))
-                                  / (cnst.WHEEL_DIA/2))
-                self._arc_len_curr = self._arc_len_set
-                return
-            # at end, set motion_state to 'stop' to end arc
-            else:
-                self._motion_state = 'stop'
-                if not self._motion_queue:
-                    self._protect = False
-                return
-        # ramp the velocity up or down or hold steady at setpoint
-        self._velocity_ramp()
-        # calculate current arc length for discrete move
-        if self._arc_len_set != 0:
-            self._arc_len_curr += self._velo_curr * cnst.T_STEP
-            # calculate remaining and rampdown arc length
-            arc_remain = self._arc_len_set - self._arc_len_curr
-            arc_ramp = self._velo_curr**2 / (2*cnst.ACC_MAX)
-            # check for ramp down at end of arc
-            if ((self._velo_set > 0 and arc_remain <= arc_ramp)
-                    or (self._velo_set < 0 and arc_remain >= -arc_ramp)):
-                self._velo_set = 0
-        # calculate commanded wheel angles from velocity and time step
-        self._theta_L += ((self._diff_L * self._velo_curr * cnst.T_STEP)
-                          / (cnst.WHEEL_DIA/2))
-        self._theta_R += ((self._diff_R * self._velo_curr * cnst.T_STEP)
-                          / (cnst.WHEEL_DIA/2))
-
-    def _steer_control(self):
-        """Calculates kinematics and wheel rotation for steer motion.
-
-        Notes
-        -----
-        At each time step, the velocity, arc length, and wheel angles
-        are calculated to command a forward (or reverse) steering path.
-        The velocity ramps up at the start and down at the end of the
-        path to approximate constant acceleration.
-
-        """
-
-        # check for stop command
-        if self._velo_set == 0 and self._velo_curr == 0:
-            # if stopped short using pause method, return
-            if self._motion_curr[0] == 'pause':
-                self._motion_curr = ['ready'] # swapped to avoid race condition
-                if not self._motion_queue:
-                    self._protect = False
-                self._motion_state = 'pause' # swapped to avoid race condition
-                return
-        # check for end of steering command
-        if ((self._arc_len_set > 0 and (self._arc_len_set
-                                        - self._arc_len_curr) <= 0)
-            or (self._arc_len_set < 0 and (self._arc_len_set
-                                           - self._arc_len_curr) >= 0)):
-            # resume interrupted linear or arc motion
-            self._motion_curr = self._motion_resume.copy()
-            self._motion_resume = ['ready']
+        # if the driven quantity has ramped down to zero after a pause
+        # command, return to standby; this applies to every kind of
+        # motion, including steering
+        if (driven_set == 0 and driven_curr == 0
+                and self._motion_curr.kind == 'pause'):
+            self._motion_curr = Move('ready') # swapped to avoid race condition
+            if not self._motion_queue:
+                self._protect = False
+            self._motion_state = 'pause' # swapped to avoid race condition
             return
-        # ramp the velocity up or down or hold steady at setpoint
-        self._velocity_ramp()
-        # update arc_len_curr at each time step
-        self._arc_len_curr += self._velo_curr * cnst.T_STEP
-        # calculate commanded wheel angles from velocity and time step
-        self._theta_L += ((self._diff_L * self._velo_curr * cnst.T_STEP)
+        # a steer command never ramps down to end on its own; it always
+        # ends by switching directly to a new curvature once its target
+        # length is reached (see the completion check below instead), so
+        # it skips this "has the ramp reached zero" completion check
+        if kind != 'steer' and driven_set == 0 and driven_curr == 0:
+            # this is the actual end of the move; check for a
+            # small remaining error and nudge the wheels to close it
+            if kind == 'rotate':
+                remain = self._ang_set - self._ang_curr
+                threshold = 0.0087
+            else:
+                remain = self._dist_set - self._dist_curr
+                threshold = 0.1
+            if abs(remain) > threshold:
+                if kind == 'rotate':
+                    self._theta_R += remain * (cnst.WHEEL_SPAN/cnst.WHEEL_DIA)
+                    self._theta_L -= remain * (cnst.WHEEL_SPAN/cnst.WHEEL_DIA)
+                    self._ang_curr = self._ang_set
+                else:
+                    # apply the same curvature used during the move (zero
+                    # for linear, so both wheels get the full remainder)
+                    factor_R = 1 + self._curvature * (cnst.WHEEL_SPAN/2)
+                    factor_L = 1 - self._curvature * (cnst.WHEEL_SPAN/2)
+                    self._theta_R += (remain*factor_R) / (cnst.WHEEL_DIA/2)
+                    self._theta_L += (remain*factor_L) / (cnst.WHEEL_DIA/2)
+                    self._dist_curr = self._dist_set
+                return
+            # if a rotation just finished and it had interrupted other
+            # motion, resume that motion instead of coming to a full stop
+            if kind == 'rotate' and self._motion_resume.kind != 'ready':
+                self._motion_prev = self._motion_resume.copy()
+                self._motion_resume = Move('ready')
+                self._motion_state = 'pause'
+                self._motion_curr = Move('pause')
+                self._resume()
+                return
+            # at end, set motion_state to 'stop' to end the move
+            self._motion_state = 'stop'
+            if not self._motion_queue:
+                self._protect = False
+            return
+
+        # a steer command ends the instant its target curvature length
+        # is reached, by switching directly into whatever motion (linear
+        # or arc) it had interrupted
+        if kind == 'steer' and self._dist_set != 0:
+            remain = self._dist_set - self._dist_curr
+            if ((self._dist_set > 0 and remain <= 0)
+                    or (self._dist_set < 0 and remain >= 0)):
+                self._motion_curr = self._motion_resume.copy()
+                self._motion_resume = Move('ready')
+                return
+
+        # ramp the driven quantity up or down or hold steady at setpoint
+        if kind == 'rotate':
+            self._ang_velocity_ramp()
+        else:
+            self._velocity_ramp()
+            # derive angular velocity from linear speed and curvature;
+            # this is what curves the path for arc and steer motion, and
+            # is zero for pure linear motion (self._curvature == 0)
+            self._ang_velo_curr = self._velo_curr * self._curvature
+
+        # accumulate discrete progress and check for a ramp-down trigger
+        if kind == 'rotate':
+            if self._ang_set != 0:
+                self._ang_curr += self._ang_velo_curr * cnst.T_STEP
+                ang_remain = self._ang_set - self._ang_curr
+                ang_ramp = (self._ang_velo_curr**2
+                           / (2*cnst.ANG_ACC*(pi/180)))
+                if ((self._ang_velo_set > 0 and ang_remain <= ang_ramp)
+                        or (self._ang_velo_set < 0
+                            and ang_remain >= -ang_ramp)):
+                    self._ang_velo_set = 0
+        elif kind != 'steer':
+            # linear and arc motion both ramp down based on remaining
+            # distance, using the identical calculation for either kind
+            if self._dist_set != 0:
+                self._dist_curr += self._velo_curr * cnst.T_STEP
+                dist_remain = self._dist_set - self._dist_curr
+                dist_ramp = self._velo_curr**2 / (2*cnst.ACC_MAX)
+                if ((self._velo_set > 0 and dist_remain <= dist_ramp)
+                        or (self._velo_set < 0
+                            and dist_remain >= -dist_ramp)):
+                    self._velo_set = 0
+        else:
+            # steer always accumulates progress but never ramps velocity
+            # down on its own; see the completion check above instead
+            self._dist_curr += self._velo_curr * cnst.T_STEP
+
+        # calculate commanded wheel angles from velocity, curvature, and
+        # time step; this single formula produces every kind of motion
+        self._theta_R += ((self._velo_curr + self._ang_velo_curr
+                           * (cnst.WHEEL_SPAN/2)) * cnst.T_STEP
                           / (cnst.WHEEL_DIA/2))
-        self._theta_R += ((self._diff_R * self._velo_curr * cnst.T_STEP)
+        self._theta_L += ((self._velo_curr - self._ang_velo_curr
+                           * (cnst.WHEEL_SPAN/2)) * cnst.T_STEP
                           / (cnst.WHEEL_DIA/2))
 
     def _control_action(self):
@@ -604,7 +534,7 @@ class Control:
         """
 
         # lock to prevent setting position or heading while calculating value
-        self._tracking_lock = True
+        self._tracking_lock.acquire()
         # start with incremental wheel rotation for current time step
         delta_theta_L = self._theta_curr_L-self._theta_prev_L
         delta_theta_R = self._theta_curr_R-self._theta_prev_R
@@ -636,7 +566,7 @@ class Control:
             elif self._heading < -pi:
                 self._heading += 2*pi
         # unlock to allow setting position or heading after calculating value
-        self._tracking_lock = False
+        self._tracking_lock.release()
 
     def _velocity_ramp(self):
         """Calculate the velocity for linear and arc motion."""
@@ -672,8 +602,8 @@ class Control:
             elif self._ang_velo_curr > self._ang_velo_set:
                 self._ang_velo_curr -= ANG_ACC * cnst.T_STEP
 
-    def _wheel_diff(self, radius, sense):
-        """Calculate differential wheel rotation for desired arc motion.
+    def _set_curvature(self, radius, sense):
+        """Calculates signed curvature (1/radius) for arc and steer motion.
 
         Parameters
         ----------
@@ -682,18 +612,23 @@ class Control:
         sense : {'counterclockwise', 'clockwise'}
             The rotation sense for robot to traverse.
 
+        Notes
+        -----
+        Curvature is the reciprocal of the radius, signed so that a
+        positive value curves the robot counterclockwise (left) and a
+        negative value curves it clockwise (right); this matches the
+        sign convention used for angular velocity everywhere else in
+        this class. _motion_control() uses this single value to derive
+        angular velocity, and from it, each wheel's speed, for both
+        'arc' and 'steer' motion; linear motion is simply the case
+        where curvature is zero.
+
         """
 
-        # calculate the differential rotation for outer and inner wheels
-        diff_outer = 1 + ((cnst.WHEEL_SPAN/2)/radius)
-        diff_inner = 1 - ((cnst.WHEEL_SPAN/2)/radius)
-        # use sense to determine which wheel is the outer or inner
         if sense == 'counterclockwise':
-            self._diff_R = diff_outer
-            self._diff_L = diff_inner
+            self._curvature = 1 / radius
         else:
-            self._diff_L = diff_outer
-            self._diff_R = diff_inner
+            self._curvature = -1 / radius
 
     def _buzzer_control(self):
         """Controls the timing of buzzer pulses.
